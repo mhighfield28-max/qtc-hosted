@@ -147,3 +147,13 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Playwright
+test-results/
+playwright-report/
+.DS_Store
+evidence/
+
+# Amplify
+.amplify/
+amplify_outputs*

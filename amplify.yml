@@ -1,0 +1,31 @@
+# How AWS Amplify builds the app from GitHub. Two parts, run in order:
+#   backend  - creates the Lambda server function and its web address, and links it to the
+#              MCQ_CLAUDE_KEY secret stored in the Amplify console (the key is never in this repo)
+#   frontend - builds the React app, pointed at that server function's address
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - nvm install 22
+        - nvm use 22
+        # npm install, not npm ci: the lock file was made with a different npm version and
+        # npm ci rejects it. Regenerate package-lock.json with Node 22 to switch back to npm ci.
+        - npm install --cache .npm --prefer-offline --no-audit --no-fund
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+frontend:
+  phases:
+    build:
+      commands:
+        - nvm use 22
+        # The backend step wrote the server function's address to amplify_outputs.json.
+        # Hand it to the build as VITE_GENERATE_URL (an address only, never the key).
+        - VITE_GENERATE_URL=$(node scripts/print-generate-url.js) && export VITE_GENERATE_URL && npm run build
+  artifacts:
+    baseDirectory: dist
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - .npm/**/*
+      - node_modules/**/*

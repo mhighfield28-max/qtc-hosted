@@ -1,0 +1,51 @@
+/*
+  THEME FILE — every colour and font in the app comes from here.
+
+  To restyle the app, change the values below and save. Nothing else needs editing.
+  Tailwind's built-in colours and fonts are switched off (the "initial" lines), so the
+  app cannot use any colour or font that isn't listed here.
+
+  Each name becomes a set of utility classes, e.g. --color-ink gives bg-ink, text-ink, border-ink.
+  Keep text contrast at 4.5:1 or more against the background it sits on (WCAG 2.1 AA).
+*/
+
+@theme {
+  --color-*: initial;
+  --font-*: initial;
+
+  /* Brand */
+  --color-ink: #243428;          /* Field Ink: header and dark panels */
+  --color-field: #2D6A5F;        /* Deep Field: secondary green, tags, links, focus ring */
+  --color-spark: #E09830;        /* Spark: primary buttons only, never as text on light backgrounds */
+  --color-on-spark: #1A1C19;     /* text on Spark buttons (7.1:1) */
+  --color-on-ink: #FFFFFF;       /* text on Field Ink panels (13.2:1) */
+  --color-on-ink-muted: #C9D4CC; /* secondary text on Field Ink panels (8.6:1) */
+
+  /* Surfaces */
+  --color-cream: #F5F2EC;        /* page background */
+  --color-card: #FFFFFF;         /* cards */
+  --color-line: #E3DFD4;         /* card borders and dividers */
+  --color-field-tint: #E6EFEC;   /* light background for tags */
+
+  /* Text */
+  --color-text: #1A1C19;         /* Near Black: body text */
+  --color-muted: #6B6F68;        /* secondary text */
+
+  /* Pass / fail and warnings: always shown with an icon and a word, never colour alone */
+  --color-pass: #1E6B2E;
+  --color-pass-tint: #EAF4EC;
+  --color-fail: #A3231B;
+  --color-fail-tint: #FBEAE8;
+  --color-warn: #7A4A00;
+  --color-warn-tint: #FDF3E1;
+
+  /* Fonts (loaded from Google Fonts in index.html) */
+  --font-heading: "Syne", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+/* Heading weight from the brief: Syne, 500 */
+:root {
+  --heading-weight: 500;
+}
