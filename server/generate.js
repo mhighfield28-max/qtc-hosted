@@ -132,17 +132,19 @@ export async function generateQuestion(payload, { apiKey, client } = {}) {
   }
 
   const attempts = []
+  const usage = emptyUsage()
   for (let attempt = 1; attempt <= 2; attempt++) {
     const request = buildRequest({ ...payload, retryProblems: attempts.at(-1)?.problems })
     let message
     try {
       message = await client.beta.messages.create(request)
     } catch (error) {
-      throw toRequestError(error)
+      throw Object.assign(toRequestError(error), { usage })
     }
+    addUsage(usage, message.usage)
     const { reply, problems } = readReply(message)
     if (reply) {
-      return { question: toQuestion(reply, payload.slot.id), attempts: attempt, usage: message.usage }
+      return { question: toQuestion(reply, payload.slot.id), attempts: attempt, usage }
     }
     attempts.push({ attempt, problems })
   }
@@ -155,7 +157,21 @@ export async function generateQuestion(payload, { apiKey, client } = {}) {
       reason: attempts.at(-1).problems.join(' '),
       attempts,
     },
+    usage,
   }
+}
+
+// ---------- Token counting ----------
+
+// Totals across every attempt for one question, so the hosted version can log what a set really costs.
+export const emptyUsage = () => ({ inputTokens: 0, outputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0 })
+
+export function addUsage(total, u = {}) {
+  total.inputTokens += u.input_tokens ?? 0
+  total.outputTokens += u.output_tokens ?? 0
+  total.cacheWriteTokens += u.cache_creation_input_tokens ?? 0
+  total.cacheReadTokens += u.cache_read_input_tokens ?? 0
+  return total
 }
 
 function toRequestError(error) {

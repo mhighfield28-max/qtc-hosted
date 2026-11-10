@@ -2,7 +2,7 @@
 
 Read this first in every chat about the hosted build. Update the Status and Next sections at the end of each session.
 
-Last updated: 10 Nov 2026
+Last updated: 10 Nov 2026 (Phase 1 built)
 
 ## What we are building
 
@@ -29,7 +29,7 @@ The course build brief says one user and no saving in the cloud. The hosted vers
 - Backend: Amplify Gen 2, so all infrastructure is defined in code in the repo. Deploying into a customer's cloud means connecting the repo to their Amplify account.
 - Sign-in: Cognito, email and password with email verification.
 - Data: DynamoDB. Tables for users and allowances, a credit ledger and payments.
-- Generation: kept as it is. The browser asks for one question at a time from a Lambda Function URL, so the 30-second API limit doesn't apply. The Lambda gains three jobs: check the sign-in token, check and deduct credits, and log the tokens used.
+- Generation: kept as it is. The browser asks for one question at a time from a Lambda Function URL, so the 30-second API limit doesn't apply. The Lambda gains three jobs: check the sign-in token, check and deduct credits plus log the tokens used.
 - The key stays an Amplify secret (MCQ_CLAUDE_KEY) and never reaches the browser.
 - Uploaded content is never stored. The browser extracts the text and sends it with each request. Only the user's own saved sets are kept.
 
@@ -62,6 +62,46 @@ The business model doc costed a 20-question set at about $0.15, assuming a Sonne
 5. Legal and operations: privacy policy, terms of service, subprocessor list (AWS and Anthropic), DPA template for universities, budget alarms, custom domain.
 6. Institution kit: a config switch that turns payments off, plus a runbook for deploying into a customer's AWS account.
 
+## Phase 1: sign-in and metering
+
+What it does:
+- Nothing shows until the user signs in. New accounts verify their email and get the free-trial credits from config/hosted.json.
+- Every request to the server function must carry a valid sign-in. Without one it is turned away before Claude is called.
+- One credit is one question set. The credit is taken when the set's first good question comes back, so a set that fails costs nothing. Finishing, resuming and regenerating within a set are included.
+- Each set is capped at 3 calls per question (first writes plus regenerations), set in config/hosted.json.
+- Every call's tokens are logged against its set, charged or not. Cost in dollars is worked out once prices are filled in in config/hosted.json.
+- The header shows the user's email, sets left and Sign out. The Generate screen says what a new set will use.
+- On a laptop with no Amplify backend the app runs exactly as the course build does, with no sign-in.
+
+Definition of done, shown in this sandbox:
+- [x] Requests without a sign-in, or with a forged one, are turned away before Claude is called (unit tests, including on the packaged Lambda)
+- [x] New accounts get the trial credits; one credit per set; failed or flagged sets are never charged; parallel requests for one set take one credit (unit tests)
+- [x] With no credits left a new set is refused before Claude is called, but a paid-for set can still be finished (unit tests)
+- [x] The per-set cap stops further calls (unit tests)
+- [x] Tokens from every attempt are logged per set and never sent to the browser (unit tests)
+- [x] The database rules that stop double-charging are in the DynamoDB requests (unit tests)
+- [x] The backend type-checks; the app builds; all 74 unit tests and all 30 browser tests pass
+- [x] The sign-in and create-account screens render in the brand colours
+
+To check after the first deploy (needs AWS):
+- [ ] Create an account, verify the email, sign in and see 3 sets left
+- [ ] Generate a set and watch it drop to 2; regenerate a question and see it stay at 2
+- [ ] In DynamoDB, the Sets table shows the set with its token counts
+- [ ] Calling the Function URL with no sign-in returns "Please sign in."
+
+## How to deploy (Mike)
+
+1. In the Anthropic Console, create a workspace for the hosted product, set a monthly spend limit and create an API key in it.
+2. In the AWS console, switch the region (top right) to Europe (London) eu-west-2.
+3. Open Amplify, choose Create new app, connect GitHub and pick qtc-hosted, branch main.
+4. Add the secret under Hosting, Secrets: name MCQ_CLAUDE_KEY, value the key. The first build may fail until the secret is there; that's expected. Redeploy once it's added.
+5. When it's live, open the amplifyapp.com address and run the "To check after the first deploy" list above.
+
+Notes:
+- Cognito sends verification emails from its own default sender, which is limited to a small number a day. Fine for testing; switch to Amazon SES in Phase 5.
+- The Accounts and Sets tables are kept even if the Amplify app is deleted, so no one loses credits by accident.
+- A custom domain later (app.mikehighfield.ai) must also be added to SITE_ORIGINS in the Amplify environment variables, or generation will be blocked there.
+
 ## Still to decide
 
 - Payment provider (merchant of record): Paddle, Lemon Squeezy or Stripe managed payments. Needed by Phase 4.
@@ -77,9 +117,11 @@ The business model doc costed a 20-question set at about $0.15, assuming a Sonne
 ## Status
 
 - 10 Nov 2026: decisions made and brief written.
-- 10 Nov 2026: GitHub access confirmed. mcq-generator-new cloned, installed and all 54 unit tests pass.
+- 10 Nov 2026: GitHub access confirmed. Course build copied into qtc-hosted.
+- 10 Nov 2026: Phase 1 (sign-in and metering) built and tested in the sandbox, on the branch phase-1-signin-metering. Waiting for Mike to merge and deploy.
 
 ## Next
 
-- Mike: create an empty private repo for the hosted build and give the Claude GitHub App access to it.
-- Claude: copy mcq-generator-new into it and start Phase 1 (sign-in, credit check in the Lambda, usage logging).
+- Mike: merge the Phase 1 pull request, deploy (see How to deploy) and run the after-deploy checks.
+- Mike: generate two or three real sets so the Sets table shows what a set really costs. Then fill in prices in config/hosted.json from Anthropic's pricing page.
+- Claude: Phase 2 (account page and saved work) when Mike says go.

@@ -2,20 +2,28 @@
 // a few at a time, and reports each result as it arrives. No API key here: the server holds it.
 
 import settings from '../../config/settings.json'
+import { SERVER_URL, authHeaders } from './hosted.js'
 
 // On a laptop the server function is at /api/generate (see vite.config.js).
-// On Amplify the build sets VITE_GENERATE_URL to the Lambda's address.
-export const GENERATE_URL = import.meta.env.VITE_GENERATE_URL || '/api/generate'
+// In hosted mode it's the Lambda's address from amplify_outputs.json, with the user's sign-in attached.
+export const GENERATE_URL = SERVER_URL
 export const MAX_CONTENT_BYTES = 4 * 1024 * 1024
 
-export class GenerationError extends Error {}
+// code is set for errors the app handles specially: 'signed-out', 'no-credits', 'cap'.
+export class GenerationError extends Error {
+  constructor(message, code) {
+    super(message)
+    this.code = code
+  }
+}
+const CODES = { 401: 'signed-out', 402: 'no-credits', 429: 'cap' }
 
 export async function requestQuestion(payload, { signal } = {}) {
   let response
   try {
     response = await fetch(GENERATE_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
       body: JSON.stringify(payload),
       signal,
     })
@@ -29,7 +37,9 @@ export async function requestQuestion(payload, { signal } = {}) {
   } catch {
     throw new GenerationError(`The server replied with an error (${response.status}).`)
   }
-  if (!response.ok) throw new GenerationError(body.error || `The server replied with an error (${response.status}).`)
+  if (!response.ok) {
+    throw new GenerationError(body.error || `The server replied with an error (${response.status}).`, CODES[response.status])
+  }
   return body
 }
 
@@ -39,7 +49,7 @@ export function contentSize(sources) {
 
 // Writes every slot not yet done. Calls onResult(slot, result) as each question arrives
 // ({ question } or { flagged }). Stops at the first server error and throws it.
-export async function runGeneration({ specification, sources, slots, total, existingStems, onResult, signal }) {
+export async function runGeneration({ setId, specification, sources, slots, total, existingStems, onResult, signal }) {
   const queue = [...slots]
   const stems = [...existingStems]
   let failure = null
@@ -49,7 +59,7 @@ export async function runGeneration({ specification, sources, slots, total, exis
       const slot = queue.shift()
       try {
         const result = await requestQuestion(
-          { specification, sources, slot, total, previousStems: [...stems] },
+          { setId, specification, sources, slot, total, previousStems: [...stems] },
           { signal },
         )
         if (result.question) stems.push(result.question.stem)

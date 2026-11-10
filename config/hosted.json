@@ -1,0 +1,11 @@
+{
+  "trialCredits": 3,
+  "callsPerQuestion": 3,
+  "pricesPerMillionTokens": {
+    "_note": "Fill these in from Anthropic's own pricing page for the model in settings.json. Until they are set, usage is logged in tokens only.",
+    "input": null,
+    "output": null,
+    "cacheWrite": null,
+    "cacheRead": null
+  }
+}

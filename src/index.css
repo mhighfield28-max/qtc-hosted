@@ -46,3 +46,31 @@
   .prose-rules th { background: var(--color-cream); }
   .prose-rules input[type="checkbox"] { margin-right: 0.4rem; }
 }
+
+/* Sign-in screen (hosted mode): Amplify's form, in the theme's colours and fonts. */
+[data-amplify-authenticator] {
+  --amplify-fonts-default-variable: var(--font-body);
+  --amplify-fonts-default-static: var(--font-body);
+  --amplify-colors-background-primary: var(--color-card);
+  --amplify-colors-font-primary: var(--color-text);
+  --amplify-colors-font-secondary: var(--color-muted);
+  --amplify-components-authenticator-router-border-color: var(--color-line);
+  --amplify-components-authenticator-router-box-shadow: none;
+  --amplify-components-button-primary-background-color: var(--color-spark);
+  --amplify-components-button-primary-color: var(--color-on-spark);
+  --amplify-components-button-primary-hover-background-color: var(--color-spark);
+  --amplify-components-button-primary-hover-color: var(--color-on-spark);
+  --amplify-components-button-primary-focus-background-color: var(--color-spark);
+  --amplify-components-button-primary-focus-color: var(--color-on-spark);
+  --amplify-components-button-primary-active-background-color: var(--color-spark);
+  --amplify-components-button-primary-active-color: var(--color-on-spark);
+  --amplify-components-button-border-radius: 9999px;
+  --amplify-components-button-link-color: var(--color-field);
+  --amplify-components-tabs-item-active-color: var(--color-ink);
+  --amplify-components-tabs-item-active-border-color: var(--color-field);
+  --amplify-components-tabs-item-color: var(--color-muted);
+  --amplify-components-fieldcontrol-focus-border-color: var(--color-field);
+  --amplify-components-fieldcontrol-focus-box-shadow: 0 0 0 2px var(--color-field);
+  min-height: 100vh;
+  background: var(--color-cream);
+}

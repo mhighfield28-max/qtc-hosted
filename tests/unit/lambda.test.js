@@ -25,39 +25,62 @@ beforeAll(async () => {
   ;({ handler } = await import(pathToFileURL(outfile).href))
 }, 60000)
 
-const event = (body, method = 'POST', base64 = false) => ({
+const event = (body, method = 'POST', { base64 = false, token, path = '/' } = {}) => ({
   requestContext: { http: { method } },
+  rawPath: path,
+  headers: token ? { authorization: `Bearer ${token}` } : {},
   isBase64Encoded: base64,
   body: base64 ? Buffer.from(body).toString('base64') : body,
 })
 
-describe('the Amplify Lambda', () => {
-  it('bundles into one file with the Claude SDK, the shared server code and the settings', () => {
+const payload = JSON.stringify({
+  setId: 'set-00000001',
+  specification: 'spec',
+  sources: [{ name: 'a.txt', text: 'x' }],
+  slot: { id: 'q01', number: 1, level: 'Remember', outcome: { code: 'LO1', text: 't' }, keyPosition: 'A' },
+  total: 20,
+})
+
+describe('the Amplify Lambda (hosted)', () => {
+  it('bundles into one file with the Claude SDK, the sign-in checker, the database client and the shared server code', () => {
     expect(bundle).toContain('server-side-fallback-2026-07-01')
     expect(bundle).toContain('claude-opus-5-5')
     expect(bundle).toContain('Write question')
+    expect(bundle).toContain('CognitoJwtVerifier')
+    expect(bundle).toContain('TransactWriteItems')
   })
 
-  it('only accepts POST', async () => {
-    expect((await handler(event('', 'GET'))).statusCode).toBe(405)
-  })
-
-  it('reads the key from the MCQ_CLAUDE_KEY secret, and says so when it is missing', async () => {
-    delete process.env.MCQ_CLAUDE_KEY
-    const payload = JSON.stringify({
-      specification: 'spec',
-      sources: [{ name: 'a.txt', text: 'x' }],
-      slot: { id: 'q01', number: 1, level: 'Remember', outcome: { code: 'LO1', text: 't' }, keyPosition: 'A' },
-      total: 20,
-    })
-    const res = await handler(event(payload, 'POST', true))
+  it('says so plainly if the deploy did not give it its sign-in and database settings', async () => {
+    for (const k of ['USER_POOL_ID', 'USER_POOL_CLIENT_ID', 'ACCOUNTS_TABLE', 'SETS_TABLE']) delete process.env[k]
+    const res = await handler(event(payload))
     expect(res.statusCode).toBe(500)
-    expect(JSON.parse(res.body).error).toContain('MCQ_CLAUDE_KEY')
+    expect(JSON.parse(res.body).error).toContain('not set up correctly')
   })
 
-  it('returns plain-English errors for bad requests', async () => {
-    const res = await handler(event('{"specification": ""}'))
-    expect(res.statusCode).toBe(400)
-    expect(JSON.parse(res.body)).toEqual({ error: 'The request had no specification.' })
+  describe('once set up', () => {
+    beforeAll(() => {
+      Object.assign(process.env, {
+        USER_POOL_ID: 'eu-west-2_TestPool1',
+        USER_POOL_CLIENT_ID: 'testclientid123',
+        ACCOUNTS_TABLE: 'Accounts',
+        SETS_TABLE: 'Sets',
+      })
+    })
+
+    it('turns away a request with no sign-in', async () => {
+      const res = await handler(event(payload, 'POST', { base64: true }))
+      expect(res.statusCode).toBe(401)
+      expect(JSON.parse(res.body)).toEqual({ error: 'Please sign in.' })
+    })
+
+    it('turns away a forged sign-in token', async () => {
+      const res = await handler(event(payload, 'POST', { token: 'not-a-real-token' }))
+      expect(res.statusCode).toBe(401)
+    })
+
+    it('turns away the account page without sign-in', async () => {
+      const res = await handler(event('', 'GET', { path: '/account' }))
+      expect(res.statusCode).toBe(401)
+    })
   })
 })

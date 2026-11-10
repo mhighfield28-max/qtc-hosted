@@ -10,11 +10,12 @@ import { emptySpec, specToMarkdown, validateSpec } from './lib/specification.js'
 import { planSlots } from './lib/plan.js'
 import { runChecks } from './lib/checks.js'
 import { requestQuestion, runGeneration } from './lib/generation.js'
+import { HOSTED, fetchAccount, newSetId } from './lib/hosted.js'
 
 // "Physical Science Foundations (PHY101)" -> "PHY101"
 const moduleCode = (name) => (name.match(/\(([^)]+)\)\s*$/)?.[1] ?? name).trim()
 
-export default function App() {
+export default function App({ user, signOut }) {
   const [step, setStep] = useState(0)
   const [spec, setSpec] = useState(emptySpec)
   const [showErrors, setShowErrors] = useState(false)
@@ -25,6 +26,18 @@ export default function App() {
   const [run, setRun] = useState({ status: 'idle' }) // idle | running | done | stopped | error
   const abortRef = useRef(null)
   const mainRef = useRef(null)
+  const [account, setAccount] = useState(null) // hosted only: { email, credits }
+
+  // Hosted mode: load the user's credits once signed in.
+  useEffect(() => {
+    if (!HOSTED || !user) return
+    fetchAccount()
+      .then(setAccount)
+      .catch(() => setAccount({ email: user?.signInDetails?.loginId, credits: null }))
+  }, [user])
+  const noteCredits = (result) => {
+    if (typeof result?.credits === 'number') setAccount((a) => ({ ...a, credits: result.credits }))
+  }
 
   const errors = useMemo(() => validateSpec(spec), [spec])
   const complete = [
@@ -47,6 +60,7 @@ export default function App() {
     let done = new Set(questions.map((q) => q.id))
     if (fresh || !info) {
       info = {
+        setId: newSetId(),
         specification: specToMarkdown(spec, { houseRules, contentSource }),
         moduleCode: moduleCode(spec.moduleName),
         generatedAt: new Date().toISOString(),
@@ -61,6 +75,7 @@ export default function App() {
     setRun({ status: 'running', total: slots.length })
     try {
       await runGeneration({
+        setId: info.setId,
         specification: info.specification,
         sources: files.filter((f) => f.status === 'ok').map((f) => ({ name: f.name, text: f.text })),
         slots: remaining,
@@ -68,6 +83,7 @@ export default function App() {
         existingStems: fresh ? [] : questions.filter((q) => !q.flagged).map((q) => q.stem),
         signal: controller.signal,
         onResult: (slot, result) => {
+          noteCredits(result)
           const entry = result.question
             ? { ...result.question, checks: runChecks(result.question, spec).checks }
             : { id: slot.id, status: 'draft', level: slot.level, outcome: slot.outcome.code, flagged: result.flagged }
@@ -99,6 +115,7 @@ export default function App() {
     if (!slot || !questionSet) throw new Error("This question isn't in the current plan. Generate the set again.")
     const old = questions.find((q) => q.id === id)
     const result = await requestQuestion({
+      setId: questionSet.setId,
       specification: questionSet.specification,
       sources: files.filter((f) => f.status === 'ok').map((f) => ({ name: f.name, text: f.text })),
       slot,
@@ -107,6 +124,7 @@ export default function App() {
       replacing: old?.flagged ? undefined : old?.stem,
       note: note?.trim() || undefined,
     })
+    noteCredits(result)
     const entry = result.question
       ? { ...result.question, checks: runChecks(result.question, spec).checks }
       : { id, status: 'draft', level: slot.level, outcome: slot.outcome.code, flagged: result.flagged }
@@ -135,7 +153,12 @@ export default function App() {
       >
         Skip to content
       </a>
-      <StepBar current={step} complete={complete} onGo={go} />
+      <StepBar
+        current={step}
+        complete={complete}
+        onGo={go}
+        account={HOSTED ? { email: account?.email ?? user?.signInDetails?.loginId, credits: account?.credits, onSignOut: signOut } : null}
+      />
       <main id="main" ref={mainRef} className="mx-auto max-w-[960px] px-4 py-8 [&_h1]:outline-none" tabIndex={-1}>
         {step === 0 && (
           <SetupScreen
@@ -166,6 +189,7 @@ export default function App() {
             files={files}
             questions={questions}
             run={run}
+            credits={HOSTED ? account?.credits : undefined}
             onGenerate={startGeneration}
             onStop={stopGeneration}
             onBack={() => go(1)}
