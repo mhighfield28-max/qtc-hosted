@@ -4,7 +4,7 @@ import { MAX_CONTENT_BYTES, contentSize } from '../lib/generation.js'
 import { formatSize } from '../lib/extract.js'
 import { Card, Notice, PrimaryButton, ScreenFooter, SecondaryButton } from '../components/ui.jsx'
 
-export default function GenerateScreen({ spec, files, questions, run, onGenerate, onStop, onBack, onNext }) {
+export default function GenerateScreen({ spec, files, questions, run, credits, onGenerate, onStop, onBack, onNext }) {
   const estimate = estimateMinutes(spec.distribution)
   const fit = timeFit(spec.distribution, spec.timeAvailable)
   const readFiles = files.filter((f) => f.status === 'ok')
@@ -56,6 +56,17 @@ export default function GenerateScreen({ spec, files, questions, run, onGenerate
         </p>
 
         <div className="mt-4 space-y-3">
+          {typeof credits === 'number' && credits > 0 && (
+            <Notice title="Credits">
+              A new set uses 1 of your {credits} question {credits === 1 ? 'set' : 'sets'}. You're only charged once the
+              first question comes back, and regenerating questions in this set is included.
+            </Notice>
+          )}
+          {credits === 0 && (
+            <Notice tone="warn" title="No question sets left">
+              You can still finish and regenerate a set you've already started, but a new set needs more credits.
+            </Notice>
+          )}
           {fit === 'over' && (
             <Notice tone="warn" title="Time doesn't fit">
               Even at the fast end the paper needs {estimate.min} minutes, more than the {spec.timeAvailable} available.
