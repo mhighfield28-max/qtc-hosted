@@ -1,0 +1,51 @@
+# Runs the cost test (scripts/cost-test.mjs) on GitHub, so the Claude key stays a GitHub secret.
+# Start it from the Actions tab: "Cost test" -> "Run workflow".
+# Results are saved to a new branch named cost-results-<run number>, and as a downloadable artifact.
+name: Cost test
+
+on:
+  workflow_dispatch:
+    inputs:
+      modules:
+        description: Modules to test (folders in cost-test/modules), comma-separated
+        default: phy101
+      variants:
+        description: Settings to compare (from cost-test/variants.json), comma-separated, or all
+        default: all
+
+permissions:
+  contents: write
+
+jobs:
+  cost-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Write each question set with each setting
+        env:
+          MCQ_CLAUDE_KEY: ${{ secrets.MCQ_CLAUDE_KEY }}
+          MODULES: ${{ inputs.modules }}
+          VARIANTS: ${{ inputs.variants }}
+        run: node scripts/cost-test.mjs --modules "$MODULES" --variants "$VARIANTS"
+      - name: Show the summary on the run page
+        if: always()
+        run: cat cost-results/*/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cost-results-${{ github.run_number }}
+          path: cost-results/
+      - name: Save the results to a branch
+        if: always()
+        run: |
+          git config user.name "cost-test"
+          git config user.email "cost-test@users.noreply.github.com"
+          git checkout -b "cost-results-${{ github.run_number }}"
+          git add -f cost-results
+          git commit -m "Cost test results, run ${{ github.run_number }}" || exit 0
+          git push origin "cost-results-${{ github.run_number }}"

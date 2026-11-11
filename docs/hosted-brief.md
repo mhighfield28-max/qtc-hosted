@@ -130,10 +130,17 @@ Notes:
 - 11 Nov 2026: Phase 1 deployed from the branch and live at https://app.mikehighfield.ai (DNS in Cloudflare: two CNAMEs, both DNS only; root domain still points to Payhip). Claude key replaced after it was exposed in a plain environment variable; now held only as the MCQ_CLAUDE_KEY secret. SITE_ORIGINS set. After-deploy checks passed. First real cost measured (see above).
 - 11 Nov 2026: PR #1 merged. main connected, set as production branch and app.mikehighfield.ai pointed at it; new account on main shows 3 sets. phase-1 branch disconnected in Amplify. Its two DynamoDB tables were kept (RETAIN) and hold only test data; delete them in DynamoDB when convenient.
 
+## Cost test (built 11 Nov 2026)
+
+- A GitHub Action ("Cost test") writes the same set with Opus high, Opus medium, Sonnet high, Sonnet medium and Haiku, using the app's own code, and records cost, time, flagged questions and the automatic A5 checks. The key is a GitHub repository secret (MCQ_CLAUDE_KEY), never in chat or code. See cost-test/README.md.
+- Bloom's accuracy is judged by Mike from a blind review sheet that Claude builds from the results.
+- Projected cost per set from the first live token counts: Opus high about $1.00, Sonnet high about $0.49, Haiku about $0.03 (prices in config/prices.json; confirm on Anthropic's pricing page).
+
 ## Next
 
 - Mike: delete the phase-1-signin-metering branch on GitHub (Delete branch button on PR #1); Claude can't delete branches from here.
-- Decide how to bring the cost per set down: test effort "medium" and a Sonnet-class model on the PHY101 sample and a real module, then compare Bloom's accuracy and cost.
+- Mike: add MCQ_CLAUDE_KEY as a GitHub repository secret, run the Cost test, and add a real module (e.g. Holderness) to cost-test/modules.
+- Claude: build the blind review sheet from the results; Mike rates it; then choose the model and set prices.
 - Claude: colour-coded Bloom's level blocks on the Generate and Review screens, matching the LinkedIn promo video (Mike to send a still).
 - Claude: fix the Generate screen credits notice so it doesn't say "a new set uses 1" while a paid set is running.
 - Then Phase 2 (account page and saved work) when Mike says go.
