@@ -128,10 +128,11 @@ Notes:
 - 10 Nov 2026: GitHub access confirmed. Course build copied into qtc-hosted.
 - 10 Nov 2026: Phase 1 (sign-in and metering) built and tested in the sandbox, on the branch phase-1-signin-metering.
 - 11 Nov 2026: Phase 1 deployed from the branch and live at https://app.mikehighfield.ai (DNS in Cloudflare: two CNAMEs, both DNS only; root domain still points to Payhip). Claude key replaced after it was exposed in a plain environment variable; now held only as the MCQ_CLAUDE_KEY secret. SITE_ORIGINS set. After-deploy checks passed. First real cost measured (see above).
+- 11 Nov 2026: PR #1 merged. main connected, set as production branch and app.mikehighfield.ai pointed at it; new account on main shows 3 sets. phase-1 branch disconnected in Amplify. Its two DynamoDB tables were kept (RETAIN) and hold only test data; delete them in DynamoDB when convenient.
 
 ## Next
 
-- Mike: merge the Phase 1 pull request, connect the main branch in Amplify and point app.mikehighfield.ai at main. Accounts made on the phase-1 branch will not carry over, so do this before inviting anyone.
+- Mike: delete the phase-1-signin-metering branch on GitHub (Delete branch button on PR #1); Claude can't delete branches from here.
 - Decide how to bring the cost per set down: test effort "medium" and a Sonnet-class model on the PHY101 sample and a real module, then compare Bloom's accuracy and cost.
 - Claude: colour-coded Bloom's level blocks on the Generate and Review screens, matching the LinkedIn promo video (Mike to send a still).
 - Claude: fix the Generate screen credits notice so it doesn't say "a new set uses 1" while a paid set is running.
