@@ -84,10 +84,18 @@ Definition of done, shown in this sandbox:
 - [x] The sign-in and create-account screens render in the brand colours
 
 To check after the first deploy (needs AWS):
-- [ ] Create an account, verify the email, sign in and see 3 sets left
-- [ ] Generate a set and watch it drop to 2; regenerate a question and see it stay at 2
-- [ ] In DynamoDB, the Sets table shows the set with its token counts
-- [ ] Calling the Function URL with no sign-in returns "Please sign in."
+- [x] Create an account, verify the email, sign in and see 3 sets left (11 Nov, app.mikehighfield.ai)
+- [x] Generate a set and watch it drop to 2; regenerate a question and see it stay at 2 (20 of 20 written, none flagged, about 4 minutes)
+- [x] In DynamoDB, the Sets table shows the set with its token counts
+- [ ] Calling the Function URL with no sign-in returns "Please sign in." (covered by unit tests; not yet tried live)
+
+## First measured cost (11 Nov 2026)
+
+One 20-question set plus one regeneration on claude-opus-5-5 at high effort (22 calls):
+- Input 16,005; cache write 7,066; cache read 67,127; output 43,655 tokens
+- At Opus 5.5 list prices from a third-party summary ($4 in, $20 out, $5 cache write, $0.20 cache read per million; confirm on Anthropic's pricing page) that is about $1.00 a set
+- Output is nearly 90% of the cost: most of it is the model thinking at high effort
+- This is about 7 times the $0.15 the business model doc assumed. At $19 for 50 sets the credit pack would lose money. Before setting prices, test effort "medium" and a Sonnet-class model against Bloom's accuracy.
 
 ## How to deploy (Mike)
 
@@ -118,10 +126,13 @@ Notes:
 
 - 10 Nov 2026: decisions made and brief written.
 - 10 Nov 2026: GitHub access confirmed. Course build copied into qtc-hosted.
-- 10 Nov 2026: Phase 1 (sign-in and metering) built and tested in the sandbox, on the branch phase-1-signin-metering. Waiting for Mike to merge and deploy.
+- 10 Nov 2026: Phase 1 (sign-in and metering) built and tested in the sandbox, on the branch phase-1-signin-metering.
+- 11 Nov 2026: Phase 1 deployed from the branch and live at https://app.mikehighfield.ai (DNS in Cloudflare: two CNAMEs, both DNS only; root domain still points to Payhip). Claude key replaced after it was exposed in a plain environment variable; now held only as the MCQ_CLAUDE_KEY secret. SITE_ORIGINS set. After-deploy checks passed. First real cost measured (see above).
 
 ## Next
 
-- Mike: merge the Phase 1 pull request, deploy (see How to deploy) and run the after-deploy checks.
-- Mike: generate two or three real sets so the Sets table shows what a set really costs. Then fill in prices in config/hosted.json from Anthropic's pricing page.
-- Claude: Phase 2 (account page and saved work) when Mike says go.
+- Mike: merge the Phase 1 pull request, connect the main branch in Amplify and point app.mikehighfield.ai at main. Accounts made on the phase-1 branch will not carry over, so do this before inviting anyone.
+- Decide how to bring the cost per set down: test effort "medium" and a Sonnet-class model on the PHY101 sample and a real module, then compare Bloom's accuracy and cost.
+- Claude: colour-coded Bloom's level blocks on the Generate and Review screens, matching the LinkedIn promo video (Mike to send a still).
+- Claude: fix the Generate screen credits notice so it doesn't say "a new set uses 1" while a paid set is running.
+- Then Phase 2 (account page and saved work) when Mike says go.
