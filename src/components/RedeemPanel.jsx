@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { redeemCode } from '../lib/hosted.js'
 import { Notice, PrimaryButton } from './ui.jsx'
+import { Help } from './Help.jsx'
 
 // Enter a code (a beta code now; a Payhip purchase key later) to add questions to the account.
 export default function RedeemPanel({ onRedeemed, autoFocus = false, id = 'redeemCode' }) {
@@ -27,9 +28,11 @@ export default function RedeemPanel({ onRedeemed, autoFocus = false, id = 'redee
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <label htmlFor={id} className="block font-medium">
-        Your code
-      </label>
+      <Help topic="redeem">
+        <label htmlFor={id} className="block font-medium">
+          Your code
+        </label>
+      </Help>
       <div className="flex flex-wrap gap-3">
         <input
           id={id}

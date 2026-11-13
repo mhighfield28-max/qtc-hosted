@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import houseRulesFile from '../docs/house-rules.md?raw'
+import { MAX_WORDS, totalWords } from './lib/words.js'
 import StepBar, { canOpen } from './components/StepBar.jsx'
 import SetupScreen from './screens/SetupScreen.jsx'
 import ContentScreen from './screens/ContentScreen.jsx'
@@ -61,7 +62,7 @@ export default function App({ user, signOut }) {
   const errors = useMemo(() => validateSpec(spec), [spec])
   const complete = [
     Object.keys(errors).length === 0,
-    files.some((f) => f.status === 'ok'),
+    files.some((f) => f.status === 'ok') && totalWords(files.filter((f) => f.status === 'ok')) <= MAX_WORDS,
     questions.length > 0 && run.status !== 'running',
     questions.length > 0 && run.status !== 'running',
     false,

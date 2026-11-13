@@ -5,7 +5,7 @@ test('Item 4: upload shows extracted text for PDF, Word and PowerPoint', async (
   await page.goto('/')
   await importSampleSpec(page)
   await page.getByRole('button', { name: 'Continue to Content' }).click()
-  await expect(page.getByText("Teaching materials only. Don't upload anything that contains student data.")).toBeVisible()
+  await expect(page.getByTestId('privacy-panel')).toContainText('Never upload student data')
   await uploadSamples(page)
 
   const rows = page.getByTestId('file-row')
@@ -28,7 +28,7 @@ test('Item 4: pasted text, unreadable files, and the 20-file limit', async ({ pa
   await page.goto('/')
   await importSampleSpec(page)
   await page.getByRole('button', { name: 'Continue to Content' }).click()
-  await page.getByLabel('Teaching text').fill('Boiling happens when vapour pressure equals external pressure.')
+  await page.getByLabel('Teaching text', { exact: true }).fill('Boiling happens when vapour pressure equals external pressure.')
   await page.getByRole('button', { name: 'Add pasted text' }).click()
   await expect(page.getByTestId('file-row').filter({ hasText: 'Pasted text 1' })).toContainText('Read OK')
 

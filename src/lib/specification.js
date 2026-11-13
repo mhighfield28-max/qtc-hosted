@@ -211,6 +211,16 @@ function matchLevel(value) {
   return LEVELS.find((l) => v.startsWith(l.toLowerCase().slice(0, 4))) ?? ''
 }
 
+// Reads Part A (the house rules) from a downloaded specification, if the file has one.
+// Part A is everything before the Part B heading, without the "---" divider. Returns '' if absent.
+export function houseRulesFromMarkdown(text) {
+  const partBStart = text.search(/^#.*Part B/m)
+  if (partBStart <= 0) return ''
+  const before = text.slice(0, partBStart).replace(/\s*---\s*$/, '').trim()
+  if (!/Part A|House rules/i.test(before) || !/^###\s*A\d/m.test(before)) return ''
+  return before
+}
+
 // Reads a Part B (or a full specification containing Part B) into a spec object.
 // Returns { spec, warnings }. Anything missing is left blank for the form to flag.
 export function specFromMarkdown(text) {

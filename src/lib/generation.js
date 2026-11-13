@@ -7,7 +7,6 @@ import { SERVER_URL, authHeaders } from './hosted.js'
 // On a laptop the server function is at /api/generate (see vite.config.js).
 // In hosted mode it's the Lambda's address from amplify_outputs.json, with the user's sign-in attached.
 export const GENERATE_URL = SERVER_URL
-export const MAX_CONTENT_BYTES = 4 * 1024 * 1024
 
 // code is set for errors the app handles specially: 'signed-out', 'no-credits', 'no-access', 'cap', 'too-long'.
 export class GenerationError extends Error {
@@ -41,10 +40,6 @@ export async function requestQuestion(payload, { signal } = {}) {
     throw new GenerationError(body.error || `The server replied with an error (${response.status}).`, CODES[response.status])
   }
   return body
-}
-
-export function contentSize(sources) {
-  return new Blob([JSON.stringify(sources)]).size
 }
 
 // Writes every slot not yet done. Calls onResult(slot, result) as each question arrives

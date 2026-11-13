@@ -32,17 +32,17 @@ test('Review: Edit, Save and Cancel work, edited text is kept, and checks re-run
 
   // Cancel throws changes away
   await q2.getByRole('button', { name: 'Edit question 2' }).click()
-  await q2.getByLabel('Stem').fill('This change should be thrown away')
+  await q2.getByLabel('Stem', { exact: true }).fill('This change should be thrown away')
   await q2.getByRole('button', { name: 'Cancel' }).click()
   await expect(q2).not.toContainText('This change should be thrown away')
 
   // Save keeps them, and the two failing checks now pass
   await q2.getByRole('button', { name: 'Edit question 2' }).click()
-  await q2.getByLabel('Stem').fill('Why does water boil below 100 °C at the top of a high mountain?')
+  await q2.getByLabel('Stem', { exact: true }).fill('Why does water boil below 100 °C at the top of a high mountain?')
   await q2.getByRole('textbox', { name: 'Option A' }).fill('The air pressure is lower there')
   await q2.getByRole('textbox', { name: 'Option C' }).fill('There is less oxygen in the air')
   await q2.getByRole('textbox', { name: 'Option D' }).fill('The water up there is much purer')
-  await q2.getByLabel('Misconception behind option D').fill('Impurities are what make water boil')
+  await q2.getByLabel('Misconception behind option D', { exact: true }).fill('Impurities are what make water boil')
   await shot2(page, '4-editing-a-question')
   await q2.getByRole('button', { name: 'Save changes' }).click()
 
@@ -55,13 +55,13 @@ test('Review: Edit, Save and Cancel work, edited text is kept, and checks re-run
   // Changing the key in the editor moves the key mark
   await q2.getByRole('button', { name: 'Edit question 2' }).click()
   await q2.getByRole('radio').nth(1).check()
-  await q2.getByLabel('Misconception behind option A').fill('Lower pressure has no effect')
+  await q2.getByLabel('Misconception behind option A', { exact: true }).fill('Lower pressure has no effect')
   await q2.getByRole('button', { name: 'Save changes' }).click()
   await expect(q2.getByRole('listitem').filter({ hasText: 'The air is colder' })).toContainText('✓ Key')
 
   // An empty stem can't be saved
   await q2.getByRole('button', { name: 'Edit question 2' }).click()
-  await q2.getByLabel('Stem').fill('')
+  await q2.getByLabel('Stem', { exact: true }).fill('')
   await q2.getByRole('button', { name: 'Save changes' }).click()
   await expect(q2.getByText('Write the stem.')).toBeVisible()
 })
@@ -99,7 +99,7 @@ test('Review: Approve and Reject work, the status chip updates, and a reject rea
   // Editing an approved question sends it back to draft
   await q1.getByRole('button', { name: 'Edit question 1' }).click()
   await expect(q1.getByText('Saving changes sets this question back to Draft')).toBeVisible()
-  await q1.getByLabel('Stem').fill('At sea level, what is the boiling point of pure water?')
+  await q1.getByLabel('Stem', { exact: true }).fill('At sea level, what is the boiling point of pure water?')
   await q1.getByRole('button', { name: 'Save changes' }).click()
   await expect(q1.getByTestId('status-chip')).toHaveText('○ Draft')
   await expect(page.getByTestId('approved-count')).toHaveText('0 of 20 approved')
@@ -141,7 +141,7 @@ test('Review: Regenerate replaces one question only, using the note, including a
   const q1 = card(page, 1)
   const q2Stem = await card(page, 2).locator('p.text-lg').textContent()
   await q1.getByRole('button', { name: 'Regenerate question 1' }).click()
-  await q1.getByLabel('Note for the AI (optional)').fill('make it harder')
+  await q1.getByLabel('Note for the AI (optional)', { exact: true }).fill('make it harder')
   await q1.getByRole('button', { name: 'Regenerate question 1' }).click()
   await expect(q1).toContainText('Regenerated stem for q01')
   await expect(q1.getByTestId('regenerate-panel')).toHaveCount(0)
@@ -157,7 +157,7 @@ test('Review: Regenerate replaces one question only, using the note, including a
   // The flagged question can be regenerated too, and becomes a normal card
   const q5 = card(page, 5)
   await q5.getByRole('button', { name: 'Regenerate question 5' }).click()
-  await q5.getByLabel('Note for the AI (optional)').fill('try again')
+  await q5.getByLabel('Note for the AI (optional)', { exact: true }).fill('try again')
   await q5.getByRole('button', { name: 'Regenerate question 5' }).click()
   await expect(page.getByTestId('flagged-card')).toHaveCount(0)
   await expect(page.getByTestId('question-card')).toHaveCount(20)
@@ -196,18 +196,18 @@ test('Review: summary bar, filters and key-position balance update live', async 
   await expect(page.getByTestId('key-balance')).not.toHaveText(keyText)
 
   // Filters
-  await page.getByLabel('Status').selectOption('approved')
+  await page.getByLabel(/^Status/).selectOption('approved')
   await expect(page.getByTestId('question-card')).toHaveCount(1)
   await expect(page.getByTestId('filter-count')).toHaveText('Showing 1 of 20')
-  await page.getByLabel('Status').selectOption('all')
-  await page.getByLabel('Failed checks only').check()
+  await page.getByLabel(/^Status/).selectOption('all')
+  await page.getByLabel('Failed checks only', { exact: true }).check()
   const failing = await page.getByTestId('question-card').count()
   expect(failing).toBeGreaterThan(0)
   expect(failing).toBeLessThan(20)
   for (let i = 0; i < failing; i++) {
     await expect(page.getByTestId('question-card').nth(i).getByText('✗').first()).toBeVisible()
   }
-  await page.getByLabel('Failed checks only').uncheck()
+  await page.getByLabel('Failed checks only', { exact: true }).uncheck()
   await page.getByRole('combobox', { name: /^Level/ }).selectOption('Apply')
   const applyCount = await page.getByTestId('question-card').count()
   await expect(page.getByTestId('filter-count')).toHaveText(`Showing ${applyCount} of 20`)
