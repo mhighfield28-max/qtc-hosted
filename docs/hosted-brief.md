@@ -160,11 +160,26 @@ To check after deploy:
 - [ ] Generate a set: the counter falls by one per question written; regenerating doesn't change it
 - [ ] A new account with no code sees the waiting list screen, and appears on the admin page after joining
 
+## Launch prep 2: guidance and look (built 13 Nov 2026)
+
+Written for lecturers who won't take the training course.
+
+- "?" help buttons on every Set up field, the Content, Generate, Review and Export screens and the code box. All the words live in one file, `src/content/helpText.js`, for Mike to check and edit.
+- Import and Download now say "(Part A and B)", with the tooltip "Part A: house rules, the same for every module. Part B: your module." Import also reads Part A: if the file's house rules differ from the ones in use, it asks before replacing them.
+- Content screen: what to upload (taught materials; a syllabus alone isn't enough), a live word meter against 25,000 with a rough guide (100 slides, a 10-page document, an article, a chapter), one calm copyright line, and a privacy panel. The browser now blocks a set over 25,000 words (the old 4 MB limit is gone).
+- Privacy wording checked against Anthropic's privacy centre: by default it deletes API inputs and outputs within 30 days (longer only for content flagged by its safety checks). So the panel says "Not stored by Questions That Count. The AI provider deletes them within 30 days" rather than "not stored at all".
+- Bloom's level blocks, like the promo video: a cream card with a coloured stripe. Remember and Understand are greens, Apply and Analyse are ochres and Evaluate is brick. They're used on the Generate table and progress list, the Set up distribution and the Review summary and question cards. The colours live in theme.css.
+
+To check after deploy:
+- [ ] Open a few "?" buttons and read the help text; edit `src/content/helpText.js` where it doesn't sound right
+- [ ] Download a specification, then import it again: no question about house rules
+
 ## Next
 
 - Mike: delete the phase-1-signin-metering branch on GitHub (Delete branch button on PR #1); Claude can't delete branches from here.
 - Mike: add MCQ_CLAUDE_KEY as a GitHub repository secret, run the Cost test, and add a real module (e.g. Holderness) to cost-test/modules.
 - Claude: build the blind review sheet from the results; Mike rates it; then choose the model and set prices.
-- Claude: colour-coded Bloom's level blocks on the Generate and Review screens, matching the LinkedIn promo video (Mike to send a still).
-- Claude: fix the Generate screen credits notice so it doesn't say "a new set uses 1" while a paid set is running.
+- Claude: PR C, Canvas QTI and Brightspace exports, with the format choice moved to the Export screen.
+- Claude: PR D, Payhip licence keys in the Redeem box (packs of 100, 300 and 800 questions).
+- Claude: draft the privacy notice and terms of use for a lawyer to check.
 - Then Phase 2 (account page and saved work) when Mike says go.

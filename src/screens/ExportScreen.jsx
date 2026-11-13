@@ -3,6 +3,7 @@ import { LEVELS } from '../lib/distribution.js'
 import { EXPORT_FORMATS } from '../lib/specification.js'
 import { approvedOnly, buildExport } from '../lib/exporters.js'
 import { Card, Notice, PrimaryButton, ScreenFooter, SecondaryButton } from '../components/ui.jsx'
+import { Help } from '../components/Help.jsx'
 
 const FORMAT_FILES = {
   'Moodle GIFT': 'Moodle import (.txt, GIFT format)',
@@ -57,7 +58,11 @@ export default function ExportScreen({ spec, questions, questionSet, onBack }) {
     <div className="space-y-6">
       <div>
         <h1 tabIndex={-1} className="text-3xl">Export</h1>
-        <p className="text-muted">Download the approved questions for your LMS, with a review sheet and the specification used.</p>
+        <Help topic="exporting">
+          <p className="text-muted">
+            Download the approved questions for your LMS, with a review sheet and the specification used.
+          </p>
+        </Help>
       </div>
 
       {approved.length === 0 ? (

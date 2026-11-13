@@ -43,10 +43,10 @@ test('Item 1: all five steps visible; back and forward work', async ({ page }) =
   await step(page, 'Content').click()
   await expect(page.getByTestId('file-row')).toHaveCount(3)
   await step(page, 'Set up').click()
-  await expect(page.getByLabel('Module name and code')).toHaveValue('Physical Science Foundations (PHY101)')
+  await expect(page.getByLabel('Module name and code', { exact: true })).toHaveValue('Physical Science Foundations (PHY101)')
 
   // Breaking an earlier step blocks going forward again
-  await page.getByLabel('Module name and code').fill('')
+  await page.getByLabel('Module name and code', { exact: true }).fill('')
   await expect(step(page, 'Content')).toBeDisabled()
 })
 

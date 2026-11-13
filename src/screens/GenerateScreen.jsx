@@ -1,15 +1,16 @@
 import { LEVELS, SECONDS_PER_QUESTION, WEIGHT_LIMIT, estimateMinutes, timeFit } from '../lib/distribution.js'
 import { weightWarning } from '../lib/specification.js'
-import { MAX_CONTENT_BYTES, contentSize } from '../lib/generation.js'
-import { formatSize } from '../lib/extract.js'
+import { MAX_WORDS, formatWords, totalWords } from '../lib/words.js'
+import { Help } from '../components/Help.jsx'
+import { LevelBlock } from '../components/LevelBlock.jsx'
 import { Card, Notice, PrimaryButton, ScreenFooter, SecondaryButton } from '../components/ui.jsx'
 
 export default function GenerateScreen({ spec, files, questions, run, credits, setStarted = false, onGenerate, onStop, onBack, onNext }) {
   const estimate = estimateMinutes(spec.distribution)
   const fit = timeFit(spec.distribution, spec.timeAvailable)
   const readFiles = files.filter((f) => f.status === 'ok')
-  const size = contentSize(readFiles.map((f) => ({ name: f.name, text: f.text })))
-  const tooBig = size > MAX_CONTENT_BYTES
+  const words = totalWords(readFiles)
+  const tooBig = words > MAX_WORDS
 
   const total = run.total ?? Number(spec.questionCount)
   const written = questions.filter((q) => !q.flagged).length
@@ -26,10 +27,12 @@ export default function GenerateScreen({ spec, files, questions, run, credits, s
       </div>
 
       <Card>
-        <h2 className="mb-4 text-xl">What will be asked for</h2>
+        <Help topic="generating" className="mb-4">
+          <h2 className="text-xl">What will be asked for</h2>
+        </Help>
         <p className="mb-4">
           <strong>{spec.questionCount} questions</strong> for <strong>{spec.moduleName}</strong>, written from{' '}
-          {readFiles.length} {readFiles.length === 1 ? 'source' : 'sources'} ({formatSize(size)} of text).
+          {readFiles.length} {readFiles.length === 1 ? 'source' : 'sources'} ({formatWords(words)} words).
         </p>
         <table className="w-full border-collapse text-left">
           <caption className="sr-only">Questions per level and estimated time</caption>
@@ -43,7 +46,9 @@ export default function GenerateScreen({ spec, files, questions, run, credits, s
           <tbody>
             {LEVELS.map((l) => (
               <tr key={l} className="border-b border-line">
-                <th scope="row" className="py-2 pr-4 font-normal">{l}</th>
+                <th scope="row" className="py-2 pr-4 font-normal">
+                  <LevelBlock level={l} />
+                </th>
                 <td className="py-2 pr-4">{spec.distribution[l]}</td>
                 <td className="py-2 text-muted">{SECONDS_PER_QUESTION[l].join('–')}</td>
               </tr>
@@ -56,6 +61,11 @@ export default function GenerateScreen({ spec, files, questions, run, credits, s
         </p>
 
         <div className="mt-4 space-y-3">
+          {typeof credits === 'number' && (
+            <Help topic="counting">
+              <p className="font-medium">Your questions: {credits.toLocaleString('en-GB')} left</p>
+            </Help>
+          )}
           {typeof credits === 'number' && !setStarted && credits >= Number(spec.questionCount) && (
             <Notice title="Questions">
               This set uses {spec.questionCount} of your {credits.toLocaleString('en-GB')} questions. Each question is counted
@@ -100,8 +110,8 @@ export default function GenerateScreen({ spec, files, questions, run, credits, s
           )}
           {tooBig && (
             <Notice tone="fail" title="Too much content">
-              The teaching content is {formatSize(size)}; the limit is {formatSize(MAX_CONTENT_BYTES)}. Go back and remove
-              some files.
+              The teaching content is {formatWords(words)} words; the limit for one set is {formatWords(MAX_WORDS)}. Go back
+              and remove some material.
             </Notice>
           )}
         </div>
@@ -129,13 +139,19 @@ export default function GenerateScreen({ spec, files, questions, run, credits, s
             </Notice>
           )}
           {questions.length > 0 && (
-            <ol className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4" data-testid="question-status-list">
+            <ol className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="question-status-list">
               {questions.map((q) => (
                 <li key={q.id}>
                   {q.flagged ? (
-                    <span className="text-fail"><span aria-hidden="true">✗ </span>Q{Number(q.id.slice(1))} flagged</span>
+                    <LevelBlock level={q.level} number={Number(q.id.slice(1))}>
+                      <span className="text-fail">
+                        <span aria-hidden="true">✗ </span>flagged
+                      </span>
+                    </LevelBlock>
                   ) : (
-                    <span className="text-pass"><span aria-hidden="true">✓ </span>Q{Number(q.id.slice(1))} {q.level}</span>
+                    <LevelBlock level={q.level} number={Number(q.id.slice(1))}>
+                      <span aria-hidden="true" className="text-pass">✓</span>
+                    </LevelBlock>
                   )}
                 </li>
               ))}
@@ -172,3 +188,4 @@ export default function GenerateScreen({ spec, files, questions, run, credits, s
     </div>
   )
 }
+

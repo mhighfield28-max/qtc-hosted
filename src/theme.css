@@ -39,6 +39,15 @@
   --color-warn: #7A4A00;
   --color-warn-tint: #FDF3E1;
 
+  /* Bloom's levels: the stripe on each level block. Greens for the lower levels, ochres for the
+     middle, brick for Evaluate. Each is 3:1 or more against cream; the level is always written
+     in words too, so colour is never the only signal. */
+  --color-remember: #5E8F6E;
+  --color-understand: #2D6A5F;
+  --color-apply: #B8741A;
+  --color-analyse: #9C5A12;
+  --color-evaluate: #A3462D;
+
   /* Fonts (loaded from Google Fonts in index.html) */
   --font-heading: "Syne", system-ui, sans-serif;
   --font-body: "Inter", system-ui, sans-serif;

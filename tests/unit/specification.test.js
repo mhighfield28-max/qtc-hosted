@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { emptySpec, specFromMarkdown, specToMarkdown, validateSpec } from '../../src/lib/specification.js'
+import { emptySpec, houseRulesFromMarkdown, specFromMarkdown, specToMarkdown, validateSpec } from '../../src/lib/specification.js'
 
 const read = (p) => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8')
 
@@ -74,5 +74,23 @@ describe('specification files', () => {
 
   it('rejects a file that is not a specification', () => {
     expect(() => specFromMarkdown('# Shopping list\n\n- eggs')).toThrow(/doesn't look like a specification/)
+  })
+})
+
+describe('houseRulesFromMarkdown', () => {
+  const rules = read('docs/house-rules.md')
+  const spec = specFromMarkdown(read('samples/sample-specification.md')).spec
+
+  it('reads Part A back from a downloaded specification', () => {
+    const file = specToMarkdown(spec, { houseRules: rules })
+    expect(houseRulesFromMarkdown(file)).toBe(rules.trim())
+  })
+
+  it('returns nothing for a file with only Part B', () => {
+    expect(houseRulesFromMarkdown(specToMarkdown(spec))).toBe('')
+  })
+
+  it('ignores text before Part B that is not house rules', () => {
+    expect(houseRulesFromMarkdown(`Some notes\n\n${specToMarkdown(spec)}`)).toBe('')
   })
 })

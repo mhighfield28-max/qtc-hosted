@@ -12,6 +12,7 @@ import {
 } from '../lib/distribution.js'
 import {
   EXPORT_FORMATS,
+  houseRulesFromMarkdown,
   isDistributionChanged,
   specFromMarkdown,
   specToMarkdown,
@@ -27,6 +28,8 @@ import {
   SecondaryButton,
   inputClass,
 } from '../components/ui.jsx'
+import { Help, useHelp } from '../components/Help.jsx'
+import { LevelBlock } from '../components/LevelBlock.jsx'
 
 const idFor = (key) => key.replace(/\./g, '-')
 const labelClass = 'mb-1 block font-medium'
@@ -70,6 +73,7 @@ export default function SetupScreen({
   onNext,
 }) {
   const [importMessage, setImportMessage] = useState(null)
+  const [pendingRules, setPendingRules] = useState(null) // Part A from an imported file, waiting for a yes or no
   const fileInput = useRef(null)
   const summaryRef = useRef(null)
 
@@ -115,11 +119,21 @@ export default function SetupScreen({
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
+    setPendingRules(null)
     try {
-      const { spec: imported, warnings } = specFromMarkdown(await file.text())
+      const text = await file.text()
+      const { spec: imported, warnings } = specFromMarkdown(text)
+      const rules = houseRulesFromMarkdown(text)
       setSpec(imported)
       setShowErrors(true)
-      setImportMessage({ tone: 'pass', text: `Imported "${file.name}".`, warnings })
+      let partA
+      if (!rules) partA = "The file has no Part A, so the house rules weren't changed."
+      else if (rules.trim() === houseRules.trim()) partA = 'Part A matches the house rules in use.'
+      else {
+        partA = ''
+        setPendingRules(rules)
+      }
+      setImportMessage({ tone: 'pass', text: `Imported "${file.name}". ${partA}`.trim(), warnings })
     } catch (error) {
       setImportMessage({ tone: 'fail', text: error.message, warnings: [] })
     }
@@ -145,11 +159,23 @@ export default function SetupScreen({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 tabIndex={-1} className="text-3xl">Set up</h1>
-          <p className="text-muted">Part B of the specification: about your module.</p>
+          <Help topic="specParts">
+            <p className="text-muted">Fill in Part B: about your module. Part A, the house rules, is ready-made.</p>
+          </Help>
         </div>
         <div className="flex flex-wrap gap-2">
-          <SecondaryButton onClick={() => fileInput.current?.click()}>Import specification</SecondaryButton>
-          <SecondaryButton onClick={handleDownload}>Download specification</SecondaryButton>
+          <SecondaryButton
+            onClick={() => fileInput.current?.click()}
+            title="Part A: house rules, the same for every module. Part B: your module."
+          >
+            Import specification (Part A and B)
+          </SecondaryButton>
+          <SecondaryButton
+            onClick={handleDownload}
+            title="Part A: house rules, the same for every module. Part B: your module."
+          >
+            Download specification (Part A and B)
+          </SecondaryButton>
           <input
             ref={fileInput}
             type="file"
@@ -170,6 +196,33 @@ export default function SetupScreen({
           {importMessage.warnings.map((w) => (
             <span key={w} className="block">{w}</span>
           ))}
+        </Notice>
+      )}
+
+      {pendingRules && (
+        <Notice tone="warn" title="Different house rules">
+          {pendingRules.trim() === houseRulesFromFile.trim()
+            ? "The file uses the standard house rules (Part A), but you've edited them on this page. Which do you want for this set?"
+            : 'The file has its own house rules (Part A), edited from the standard ones. Use them for this set?'}
+          <span className="mt-3 flex flex-wrap gap-2">
+            <SecondaryButton
+              onClick={() => {
+                setHouseRules(pendingRules)
+                setPendingRules(null)
+                setImportMessage((m) => m && { ...m, text: `${m.text} House rules taken from the file.` })
+              }}
+            >
+              {pendingRules.trim() === houseRulesFromFile.trim() ? 'Use the standard rules' : "Use the file's house rules"}
+            </SecondaryButton>
+            <SecondaryButton
+              onClick={() => {
+                setPendingRules(null)
+                setImportMessage((m) => m && { ...m, text: `${m.text} House rules kept as they were.` })
+              }}
+            >
+              {pendingRules.trim() === houseRulesFromFile.trim() ? 'Keep my edited rules' : 'Keep the current ones'}
+            </SecondaryButton>
+          </span>
         </Notice>
       )}
 
@@ -202,7 +255,9 @@ export default function SetupScreen({
         <h2 className="mb-4 text-xl">B1. Module and outcomes</h2>
         <div className="space-y-5">
           <div>
-            <label htmlFor="moduleName" className={labelClass}>Module name and code</label>
+            <Help topic="moduleName">
+              <label htmlFor="moduleName" className={labelClass}>Module name and code</label>
+            </Help>
             <input
               {...errProps(errors, 'moduleName', show)}
               className={inputClass}
@@ -213,7 +268,9 @@ export default function SetupScreen({
           </div>
 
           <div>
-            <label htmlFor="studyLevel" className={labelClass}>Level of study</label>
+            <Help topic="studyLevel">
+              <label htmlFor="studyLevel" className={labelClass}>Level of study</label>
+            </Help>
             <p className={hintClass} id="studyLevel-hint">Fills the default distribution.</p>
             <select
               {...errProps(errors, 'studyLevel', show)}
@@ -231,7 +288,7 @@ export default function SetupScreen({
 
           <fieldset>
             <legend className={labelClass}>Learning outcomes</legend>
-            <p className={hintClass}>At least one. Give each the level it targets.</p>
+            <HintWithHelp topic="outcomes">At least one. Give each the Bloom's level it targets.</HintWithHelp>
             <FieldError id="outcomes-error" message={err('outcomes')} />
             <div className="space-y-3">
               {spec.outcomes.map((o, i) => (
@@ -285,7 +342,10 @@ export default function SetupScreen({
         <h2 className="mb-4 text-xl">B2. What was taught</h2>
         <fieldset>
           <legend className={labelClass}>Cases and examples used in teaching</legend>
-          <p className={hintClass}>Higher-order questions won't reuse these. List them all; at least one.</p>
+          <HintWithHelp topic="cases">
+            The worked examples and case studies students have already seen. Apply, Analyse and Evaluate questions will use
+            new ones instead. At least one.
+          </HintWithHelp>
           <FieldError id="cases-error" message={err('cases')} />
           <div className="space-y-3">
             {spec.cases.map((c, i) => (
@@ -320,9 +380,9 @@ export default function SetupScreen({
         <h2 className="mb-4 text-xl">B3. What students get wrong</h2>
         <fieldset>
           <legend className={labelClass}>Misconceptions</legend>
-          <p className={hintClass}>
-            Distractors are built from these. At least two. Think of the errors you correct every year in marking.
-          </p>
+          <HintWithHelp topic="misconceptions">
+            Wrong answers are built from these. At least two. Think of the errors you correct every year in marking.
+          </HintWithHelp>
           <FieldError id="misconceptions-error" message={err('misconceptions')} />
           <div className="space-y-3">
             {spec.misconceptions.map((m, i) => (
@@ -358,7 +418,9 @@ export default function SetupScreen({
         <h2 className="mb-4 text-xl">B4. Number of questions and distribution</h2>
         <div className="space-y-5">
           <div>
-            <label htmlFor="questionCount" className={labelClass}>Number of questions</label>
+            <Help topic="questionCount">
+              <label htmlFor="questionCount" className={labelClass}>Number of questions</label>
+            </Help>
             <select
               {...errProps(errors, 'questionCount', show)}
               className={`${inputClass} sm:w-40`}
@@ -375,15 +437,17 @@ export default function SetupScreen({
 
           <fieldset>
             <legend className={labelClass}>Distribution across levels</legend>
-            <p className={hintClass}>
+            <HintWithHelp topic="distribution">
               {spec.studyLevel && spec.questionCount
                 ? `Pre-filled with the default for ${spec.studyLevel}. Must total ${spec.questionCount}.`
                 : 'Choose a level of study and number of questions to fill in the default.'}
-            </p>
+            </HintWithHelp>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5" id="distribution" tabIndex={-1}>
               {LEVELS.map((level) => (
                 <div key={level}>
-                  <label htmlFor={`dist-${level}`} className="text-sm text-muted">{level}</label>
+                  <label htmlFor={`dist-${level}`} className="mb-1 block">
+                    <LevelBlock level={level} />
+                  </label>
                   <input
                     id={`dist-${level}`}
                     type="number"
@@ -455,7 +519,9 @@ export default function SetupScreen({
         <h2 className="mb-4 text-xl">B5. Timing and weight</h2>
         <div className="space-y-5">
           <div>
-            <label htmlFor="timeAvailable" className={labelClass}>Time available (minutes)</label>
+            <Help topic="timeAvailable">
+              <label htmlFor="timeAvailable" className={labelClass}>Time available (minutes)</label>
+            </Help>
             <div className="flex flex-wrap items-center gap-4">
               <input
                 {...errProps(errors, 'timeAvailable', show)}
@@ -486,7 +552,9 @@ export default function SetupScreen({
           </div>
 
           <div>
-            <label htmlFor="gradeShare" className={labelClass}>Share of module grade (%)</label>
+            <Help topic="gradeShare">
+              <label htmlFor="gradeShare" className={labelClass}>Share of module grade (%)</label>
+            </Help>
             <input
               {...errProps(errors, 'gradeShare', show)}
               type="number"
@@ -512,6 +580,7 @@ export default function SetupScreen({
         <h2 className="mb-4 text-xl">B6. Output</h2>
         <fieldset>
           <legend className={labelClass}>Export formats</legend>
+          <HintWithHelp topic="exportFormats">Which files you want at the end. You can change this when you export.</HintWithHelp>
           <div className="flex flex-wrap gap-6" id="exportFormats" tabIndex={-1}>
             {EXPORT_FORMATS.map((f) => (
               <label key={f} className="flex items-center gap-2">
@@ -536,6 +605,21 @@ export default function SetupScreen({
       </Card>
 
       <ScreenFooter primary={<PrimaryButton onClick={handleNext}>Continue to Content →</PrimaryButton>} />
+    </div>
+  )
+}
+
+// A hint line under a legend, with a "?" beside it. (A legend has to stay the fieldset's first child,
+// so the help button goes on the hint line instead.)
+function HintWithHelp({ topic, children }) {
+  const [button, panel] = useHelp(topic)
+  return (
+    <div className="mb-2">
+      <div className="flex items-start gap-2">
+        <p className="text-sm text-muted">{children}</p>
+        {button}
+      </div>
+      {panel}
     </div>
   )
 }
@@ -565,18 +649,21 @@ function RemoveButton({ label, ...props }) {
 function HouseRules({ houseRules, houseRulesFromFile, setHouseRules }) {
   const [mode, setMode] = useState('view') // view | confirm | edit
   const edited = houseRules !== houseRulesFromFile
+  const [helpButton, helpPanel] = useHelp('houseRules')
 
   return (
     <Card>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-xl">
-          Part A: House rules{' '}
-          <span className="text-base text-muted">
-            {edited ? '(edited for this set)' : '(read-only, loaded from house-rules.md)'}
-          </span>
-        </h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl">
+            Part A: House rules{' '}
+            <span className="text-base text-muted">{edited ? '(edited for this set)' : '(the same for every module)'}</span>
+          </h2>
+          {helpButton}
+        </div>
         {mode === 'view' && <LinkButton onClick={() => setMode('confirm')}>Edit house rules</LinkButton>}
       </div>
+      {helpPanel}
 
       {mode === 'confirm' && (
         <div className="mb-4 space-y-3">

@@ -3,6 +3,8 @@ import { QUESTION_CHECKS, runChecks, runSetChecks } from '../lib/checks.js'
 import { LEVELS, KNOWLEDGE_TYPES, SECONDS_PER_QUESTION } from '../lib/distribution.js'
 import { LABELS } from '../lib/questionShape.js'
 import { Card, FieldError, Notice, PrimaryButton, ScreenFooter, SecondaryButton, inputClass } from '../components/ui.jsx'
+import { Help } from '../components/Help.jsx'
+import { LevelBlock } from '../components/LevelBlock.jsx'
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'All' },
@@ -31,9 +33,12 @@ export default function ReviewScreen({ questions, spec, questionSet, onUpdate, o
     <div className="space-y-6">
       <div>
         <h1 tabIndex={-1} className="text-3xl">Review</h1>
-        <p className="text-muted">
-          Edit, approve or reject each question. Only questions you approve are exported, and each one is approved on its own.
-        </p>
+        <Help topic="reviewing">
+          <p className="text-muted">
+            Edit, approve or reject each question. Only questions you approve are exported, and each one is approved on its
+            own.
+          </p>
+        </Help>
       </div>
 
       {questionSet && (
@@ -113,7 +118,9 @@ function SummaryBar({ questions, spec }) {
   return (
     <Card data-testid="set-checks">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-xl">Summary</h2>
+        <Help topic="summary">
+          <h2 className="text-xl">Summary</h2>
+        </Help>
         <p className="text-lg" data-testid="approved-count">
           <strong>{approved.length}</strong> of {questions.length} approved
         </p>
@@ -125,7 +132,9 @@ function SummaryBar({ questions, spec }) {
           <tr className="border-b border-line">
             <th scope="col" className="py-1 pr-3 font-medium">Level</th>
             {LEVELS.map((l) => (
-              <th key={l} scope="col" className="py-1 pr-3 font-medium">{l}</th>
+              <th key={l} scope="col" className="py-1 pr-3 font-medium">
+                <LevelBlock level={l} />
+              </th>
             ))}
           </tr>
         </thead>
@@ -196,7 +205,7 @@ function FlaggedCard({ question: q, number, onRegenerate }) {
     <Card data-testid="flagged-card" className="border-2 border-fail">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h2 className="mr-2 text-xl">Question {number}</h2>
-        <Tag>{q.level}</Tag>
+        <LevelBlock level={q.level} />
         <Tag subtle>{q.outcome}</Tag>
         <span className="ml-auto rounded-full border border-fail px-3 py-0.5 text-sm font-medium text-fail">
           <span aria-hidden="true">✗ </span>Flagged
@@ -239,7 +248,7 @@ export function QuestionCard({ question: q, number, spec, onUpdate, onRegenerate
     >
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <h2 id={`${q.id}-title`} className="mr-2 text-xl">Question {number}</h2>
-        <Tag>{q.level}</Tag>
+        <LevelBlock level={q.level} />
         <Tag>{q.knowledgeType}</Tag>
         {q.outcome && <Tag subtle>{q.outcome}</Tag>}
         <span
