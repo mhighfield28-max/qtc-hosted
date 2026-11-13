@@ -17,12 +17,12 @@ let verifier: ReturnType<typeof CognitoJwtVerifier.create> | undefined
 let store: ReturnType<typeof dynamoStore> | undefined
 
 function setup() {
-  const { USER_POOL_ID, USER_POOL_CLIENT_ID, ACCOUNTS_TABLE, SETS_TABLE } = process.env
-  if (!USER_POOL_ID || !USER_POOL_CLIENT_ID || !ACCOUNTS_TABLE || !SETS_TABLE) {
+  const { USER_POOL_ID, USER_POOL_CLIENT_ID, ACCOUNTS_TABLE, SETS_TABLE, CODES_TABLE } = process.env
+  if (!USER_POOL_ID || !USER_POOL_CLIENT_ID || !ACCOUNTS_TABLE || !SETS_TABLE || !CODES_TABLE) {
     throw new Error('The server function is missing its sign-in or database settings.')
   }
   verifier ??= CognitoJwtVerifier.create({ userPoolId: USER_POOL_ID, clientId: USER_POOL_CLIENT_ID, tokenUse: 'id' })
-  store ??= dynamoStore({ accountsTable: ACCOUNTS_TABLE, setsTable: SETS_TABLE })
+  store ??= dynamoStore({ accountsTable: ACCOUNTS_TABLE, setsTable: SETS_TABLE, codesTable: CODES_TABLE })
   return { verifier, store }
 }
 
@@ -46,6 +46,8 @@ export const handler = async (event: FunctionUrlEvent) => {
       apiKey: process.env.MCQ_CLAUDE_KEY,
       store: deps.store,
       verifyToken: (token: string) => deps.verifier.verify(token),
+      // Verified email addresses that can open the admin page, from the Amplify environment variable.
+      adminEmails: (process.env.ADMIN_EMAILS ?? '').split(',').filter(Boolean),
     },
   )
   return json(status, body)

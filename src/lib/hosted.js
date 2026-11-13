@@ -22,13 +22,27 @@ export async function authHeaders() {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-// { email, credits } for the signed-in user.
-export async function fetchAccount() {
-  const response = await fetch(`${SERVER_URL}/account`, { headers: await authHeaders() })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.error || `Couldn't load your account (${response.status}).`)
-  return body
+// Calls the server function. Returns the reply, or throws an Error with the server's plain-English message.
+async function api(method, path, body) {
+  const response = await fetch(`${SERVER_URL}${path}`, {
+    method,
+    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(await authHeaders()) },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  const reply = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(reply.error || `Something went wrong (${response.status}). Try again.`)
+  return reply
 }
 
-// A new ID for each question set. Credits are counted per set.
+// The signed-in user's account: { email, questions, access, waitlisted, isAdmin, mode }.
+export const fetchAccount = () => api('GET', '/account')
+export const redeemCode = (code) => api('POST', '/redeem', { code })
+export const joinWaitlist = () => api('POST', '/waitlist', {})
+
+// The owner's admin page.
+export const fetchUsage = () => api('GET', '/admin/usage')
+export const fetchCodes = () => api('GET', '/admin/codes')
+export const makeCodes = (count) => api('POST', '/admin/codes', { count })
+
+// A new ID for each question set.
 export const newSetId = () => crypto.randomUUID()

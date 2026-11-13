@@ -2,6 +2,7 @@
 // Uses a fake Claude, so no key and no cost.
 import { describe, expect, it, vi } from 'vitest'
 import { buildRequest } from '../../server/generate.js'
+import settings from '../../config/settings.json'
 import { costOf, loadModule, runVariant, summaryMarkdown } from '../../scripts/cost-test.mjs'
 
 const reply = {
@@ -43,7 +44,7 @@ describe('cost test', () => {
     expect(haiku.output_config).not.toHaveProperty('effort')
     const app = buildRequest(payload)
     expect(app.model).toBe('claude-opus-5-5')
-    expect(app.output_config.effort).toBe('high')
+    expect(app.output_config.effort).toBe(settings.effort)
   })
 
   it('works out cost from tokens and prices', () => {
