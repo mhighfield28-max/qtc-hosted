@@ -11,6 +11,10 @@ import { planSlots } from './lib/plan.js'
 import { runChecks } from './lib/checks.js'
 import { requestQuestion, runGeneration } from './lib/generation.js'
 import { HOSTED, fetchAccount, newSetId } from './lib/hosted.js'
+import AccessScreen from './screens/AccessScreen.jsx'
+import AdminScreen from './screens/AdminScreen.jsx'
+import RedeemPanel from './components/RedeemPanel.jsx'
+import { Card } from './components/ui.jsx'
 
 // "Physical Science Foundations (PHY101)" -> "PHY101"
 const moduleCode = (name) => (name.match(/\(([^)]+)\)\s*$/)?.[1] ?? name).trim()
@@ -26,17 +30,32 @@ export default function App({ user, signOut }) {
   const [run, setRun] = useState({ status: 'idle' }) // idle | running | done | stopped | error
   const abortRef = useRef(null)
   const mainRef = useRef(null)
-  const [account, setAccount] = useState(null) // hosted only: { email, credits }
+  // Hosted only: { email, questions, access, waitlisted, isAdmin, mode }
+  const [account, setAccount] = useState(null)
+  const [accountError, setAccountError] = useState(null)
+  const [showRedeem, setShowRedeem] = useState(false)
+  const [view, setView] = useState(() => (typeof location !== 'undefined' && location.hash === '#admin' ? 'admin' : 'app'))
 
-  // Hosted mode: load the user's credits once signed in.
+  // Hosted mode: load the account once signed in.
   useEffect(() => {
     if (!HOSTED || !user) return
     fetchAccount()
       .then(setAccount)
-      .catch(() => setAccount({ email: user?.signInDetails?.loginId, credits: null }))
+      .catch((e) => setAccountError(e.message))
   }, [user])
   const noteCredits = (result) => {
-    if (typeof result?.credits === 'number') setAccount((a) => ({ ...a, credits: result.credits }))
+    if (typeof result?.questions === 'number') setAccount((a) => ({ ...a, questions: result.questions }))
+  }
+
+  // The admin page lives at #admin, so the owner can bookmark it.
+  useEffect(() => {
+    const onHash = () => setView(location.hash === '#admin' ? 'admin' : 'app')
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+  const closeAdmin = () => {
+    history.replaceState(null, '', location.pathname)
+    setView('app')
   }
 
   const errors = useMemo(() => validateSpec(spec), [spec])
@@ -157,9 +176,41 @@ export default function App({ user, signOut }) {
         current={step}
         complete={complete}
         onGo={go}
-        account={HOSTED ? { email: account?.email ?? user?.signInDetails?.loginId, credits: account?.credits, onSignOut: signOut } : null}
+        hideSteps={HOSTED && (view === 'admin' || (account && !account.access))}
+        account={
+          HOSTED
+            ? {
+                email: account?.email ?? user?.signInDetails?.loginId,
+                questions: account?.access ? account?.questions : undefined,
+                isAdmin: account?.isAdmin,
+                onRedeem: account?.access ? () => setShowRedeem((v) => !v) : undefined,
+                onAdmin: () => {
+                  location.hash = 'admin'
+                },
+                onSignOut: signOut,
+              }
+            : null
+        }
       />
       <main id="main" ref={mainRef} className="mx-auto max-w-[960px] px-4 py-8 [&_h1]:outline-none" tabIndex={-1}>
+        {HOSTED && accountError && (
+          <Card className="mb-6">
+            <p>Couldn't load your account: {accountError} Refresh the page to try again.</p>
+          </Card>
+        )}
+        {HOSTED && showRedeem && account?.access && view === 'app' && (
+          <Card className="mb-6">
+            <h2 className="mb-3 text-xl">Redeem a code</h2>
+            <RedeemPanel
+              onRedeemed={(a) => {
+                setAccount(a)
+              }}
+            />
+          </Card>
+        )}
+        {HOSTED && view === 'admin' && account?.isAdmin && <AdminScreen onClose={closeAdmin} />}
+        {HOSTED && account && !account.access && view === 'app' && <AccessScreen account={account} onAccount={setAccount} />}
+        {(!HOSTED || (account?.access && view === 'app')) && <>
         {step === 0 && (
           <SetupScreen
             spec={spec}
@@ -189,7 +240,8 @@ export default function App({ user, signOut }) {
             files={files}
             questions={questions}
             run={run}
-            credits={HOSTED ? account?.credits : undefined}
+            credits={HOSTED ? account?.questions : undefined}
+            setStarted={questions.length > 0}
             onGenerate={startGeneration}
             onStop={stopGeneration}
             onBack={() => go(1)}
@@ -208,6 +260,7 @@ export default function App({ user, signOut }) {
           />
         )}
         {step === 4 && <ExportScreen spec={spec} questions={questions} questionSet={questionSet} onBack={() => go(3)} />}
+        </>}
       </main>
     </>
   )

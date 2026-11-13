@@ -136,6 +136,30 @@ Notes:
 - Bloom's accuracy is judged by Mike from a blind review sheet that Claude builds from the results.
 - Projected cost per set from the first live token counts: Opus high about $1.00, Sonnet high about $0.49, Haiku about $0.03 (prices in config/prices.json; confirm on Anthropic's pricing page).
 
+## Launch decisions (13 Nov 2026)
+
+- Model: Opus 5.5 at medium effort. Quality is the selling point; tiers differ by volume, not model.
+- Credits are counted in questions, not sets, because sets are 20, 30 or 40 questions. A question is charged when first written; regenerating is included; a question the AI fails to write costs nothing. Cap: 1.5 Claude calls per question (30 for a 20-question set).
+- Packs (no expiry, US dollars, about 60% margin): Starter 100 questions $15.99, Standard 300 $44.99, Pro 800 $114.99. Annual and team plans later.
+- Free trial 20 questions once the site opens to the public. During the beta the site is invite-only: new accounts redeem a code or join the waiting list. Beta codes give 200 questions each and are made on the admin page.
+- Payments: Payhip software licence keys, one Payhip product per pack, redeemed in the app.
+- Teaching material: up to 25,000 words per set, shown as a live word count with everyday examples.
+- Exports: add Canvas (QTI .zip) and Brightspace; the format is chosen on the Export screen. Docebo and Absorb later.
+- Guidance: a "?" help button on every field (written by Claude, checked by Mike); Import and Download cover Part A and Part B; Content screen explains what to upload, the word limit, copyright (one calm line) and privacy ("not stored by default", "never used to train AI models"). Video guidance later.
+- Bloom's levels shown as colour-coded blocks, as in the promo video: greens for Remember and Understand, ochre for Apply and Analyse, brick for Evaluate.
+
+## Launch prep 1: accounts and access (built 13 Nov 2026)
+
+- Invite-only beta mode with a waiting list; Redeem a code in the header; question-based credits; Opus 5.5 medium; cap 1.5 calls per question; 25,000-word limit enforced on the server.
+- Admin page at app.mikehighfield.ai/#admin, visible only to the verified emails in the ADMIN_EMAILS environment variable: testers, questions written, regenerations, real cost per question, the waiting list and invite codes.
+- New DynamoDB table: Codes. Accounts from before (set credits) are converted at 20 questions per set credit.
+
+To check after deploy:
+- [ ] Set ADMIN_EMAILS in Amplify (Hosting, Environment variables) to your email, then redeploy
+- [ ] Open app.mikehighfield.ai/#admin, make one code, sign in with a second email and redeem it: 200 questions
+- [ ] Generate a set: the counter falls by one per question written; regenerating doesn't change it
+- [ ] A new account with no code sees the waiting list screen, and appears on the admin page after joining
+
 ## Next
 
 - Mike: delete the phase-1-signin-metering branch on GitHub (Delete branch button on PR #1); Claude can't delete branches from here.

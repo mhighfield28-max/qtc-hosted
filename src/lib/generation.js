@@ -9,14 +9,14 @@ import { SERVER_URL, authHeaders } from './hosted.js'
 export const GENERATE_URL = SERVER_URL
 export const MAX_CONTENT_BYTES = 4 * 1024 * 1024
 
-// code is set for errors the app handles specially: 'signed-out', 'no-credits', 'cap'.
+// code is set for errors the app handles specially: 'signed-out', 'no-credits', 'no-access', 'cap', 'too-long'.
 export class GenerationError extends Error {
   constructor(message, code) {
     super(message)
     this.code = code
   }
 }
-const CODES = { 401: 'signed-out', 402: 'no-credits', 429: 'cap' }
+const CODES = { 401: 'signed-out', 402: 'no-credits', 403: 'no-access', 413: 'too-long', 429: 'cap' }
 
 export async function requestQuestion(payload, { signal } = {}) {
   let response

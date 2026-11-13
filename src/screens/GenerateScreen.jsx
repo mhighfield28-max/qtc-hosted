@@ -4,7 +4,7 @@ import { MAX_CONTENT_BYTES, contentSize } from '../lib/generation.js'
 import { formatSize } from '../lib/extract.js'
 import { Card, Notice, PrimaryButton, ScreenFooter, SecondaryButton } from '../components/ui.jsx'
 
-export default function GenerateScreen({ spec, files, questions, run, credits, onGenerate, onStop, onBack, onNext }) {
+export default function GenerateScreen({ spec, files, questions, run, credits, setStarted = false, onGenerate, onStop, onBack, onNext }) {
   const estimate = estimateMinutes(spec.distribution)
   const fit = timeFit(spec.distribution, spec.timeAvailable)
   const readFiles = files.filter((f) => f.status === 'ok')
@@ -56,15 +56,28 @@ export default function GenerateScreen({ spec, files, questions, run, credits, o
         </p>
 
         <div className="mt-4 space-y-3">
-          {typeof credits === 'number' && credits > 0 && (
-            <Notice title="Credits">
-              A new set uses 1 of your {credits} question {credits === 1 ? 'set' : 'sets'}. You're only charged once the
-              first question comes back, and regenerating questions in this set is included.
+          {typeof credits === 'number' && !setStarted && credits >= Number(spec.questionCount) && (
+            <Notice title="Questions">
+              This set uses {spec.questionCount} of your {credits.toLocaleString('en-GB')} questions. Each question is counted
+              once, when it's first written. Regenerating a question is included, and a question the AI can't write costs
+              nothing.
             </Notice>
           )}
-          {credits === 0 && (
-            <Notice tone="warn" title="No question sets left">
-              You can still finish and regenerate a set you've already started, but a new set needs more credits.
+          {typeof credits === 'number' && !setStarted && credits > 0 && credits < Number(spec.questionCount) && (
+            <Notice tone="warn" title="Not enough questions left">
+              This set needs {spec.questionCount} questions and you have {credits} left. Writing will stop when you run out.
+              Use Redeem a code at the top of the page to add more.
+            </Notice>
+          )}
+          {typeof credits === 'number' && setStarted && (
+            <Notice title="Questions">
+              Questions already written in this set aren't counted again. You have {credits.toLocaleString('en-GB')} left for
+              new ones.
+            </Notice>
+          )}
+          {credits === 0 && !setStarted && (
+            <Notice tone="warn" title="No questions left">
+              Use Redeem a code at the top of the page to add more.
             </Notice>
           )}
           {fit === 'over' && (

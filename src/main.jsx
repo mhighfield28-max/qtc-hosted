@@ -13,11 +13,11 @@ function SignInHeader() {
     <div className="px-6 pb-2 pt-8 text-center">
       <p className="font-heading text-2xl text-ink">Questions That Count</p>
       <p className="mt-2 text-muted">Bloom's-aligned multiple choice questions, written from your own teaching.</p>
-      {hostedSettings.trialCredits > 0 && (
-        <p className="mt-1 text-sm text-muted">
-          New accounts get {hostedSettings.trialCredits} free question {hostedSettings.trialCredits === 1 ? 'set' : 'sets'}.
-        </p>
-      )}
+      <p className="mt-1 text-sm text-muted">
+        {hostedSettings.mode === 'open'
+          ? `New accounts get ${hostedSettings.trialQuestions} free questions.`
+          : 'Private beta: create an account, then enter your invite code.'}
+      </p>
     </div>
   )
 }

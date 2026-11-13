@@ -1,11 +1,11 @@
 {
-  "trialCredits": 3,
-  "callsPerQuestion": 3,
-  "pricesPerMillionTokens": {
-    "_note": "Fill these in from Anthropic's own pricing page for the model in settings.json. Until they are set, usage is logged in tokens only.",
-    "input": null,
-    "output": null,
-    "cacheWrite": null,
-    "cacheRead": null
-  }
+  "_note": "Settings for the hosted version. Change and redeploy. Prices for working out costs are in prices.json.",
+  "mode": "beta",
+  "_mode": "beta: invited users only. New accounts get no free questions; they redeem a code or join the waiting list. open: anyone can sign up and gets trialQuestions free.",
+  "trialQuestions": 20,
+  "callsPerQuestion": 1.5,
+  "_callsPerQuestion": "Claude calls allowed per question in a set, counting first writes and regenerations: 1.5 means 30 calls for a 20-question set.",
+  "betaCodeQuestions": 200,
+  "maxWordsPerSet": 25000,
+  "_maxWordsPerSet": "The most teaching text one set can be written from. Checked in the browser and on the server."
 }

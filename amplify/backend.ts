@@ -25,13 +25,24 @@ const sets = new Table(stack, 'Sets', {
   pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
   removalPolicy: RemovalPolicy.RETAIN,
 })
+// Single-use codes (beta codes now; Payhip purchases are checked with Payhip directly).
+const codes = new Table(stack, 'Codes', {
+  partitionKey: { name: 'code', type: AttributeType.STRING },
+  billingMode: BillingMode.PAY_PER_REQUEST,
+  pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
+  removalPolicy: RemovalPolicy.RETAIN,
+})
 accounts.grantReadWriteData(lambda)
 sets.grantReadWriteData(lambda)
+codes.grantReadWriteData(lambda)
 
 // ---------- What the Lambda needs to know ----------
 const { userPool, userPoolClient } = backend.auth.resources
 backend.generate.addEnvironment('ACCOUNTS_TABLE', accounts.tableName)
 backend.generate.addEnvironment('SETS_TABLE', sets.tableName)
+backend.generate.addEnvironment('CODES_TABLE', codes.tableName)
+// Who can open the admin page: comma-separated verified emails, set in the Amplify console.
+backend.generate.addEnvironment('ADMIN_EMAILS', process.env.ADMIN_EMAILS ?? '')
 backend.generate.addEnvironment('USER_POOL_ID', userPool.userPoolId)
 backend.generate.addEnvironment('USER_POOL_CLIENT_ID', userPoolClient.userPoolClientId)
 

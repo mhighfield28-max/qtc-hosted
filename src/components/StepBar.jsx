@@ -6,14 +6,14 @@ export function canOpen(index, current, complete) {
   return complete.slice(0, index).every(Boolean)
 }
 
-export default function StepBar({ current, complete, onGo, account }) {
+export default function StepBar({ current, complete, onGo, account, hideSteps = false }) {
   return (
     <header className="sticky top-0 z-10 bg-ink text-on-ink shadow-md">
       <div className="mx-auto flex max-w-[960px] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 pt-3">
         <p className="font-heading text-lg">Questions That Count</p>
         {account && <AccountBar {...account} />}
       </div>
-      <nav aria-label="Steps" className="mx-auto max-w-[960px] px-4 pb-3 pt-2">
+      <nav aria-label="Steps" className="mx-auto max-w-[960px] px-4 pb-3 pt-2" hidden={hideSteps}>
         <ol className="flex flex-wrap gap-2">
           {STEPS.map((name, i) => {
             const isCurrent = i === current
@@ -58,17 +58,28 @@ export default function StepBar({ current, complete, onGo, account }) {
   )
 }
 
-// Hosted mode only: who is signed in, how many question sets they have left, and Sign out.
-function AccountBar({ email, credits, onSignOut }) {
+// Hosted mode only: who is signed in, questions left, Redeem a code, Admin (owner only) and Sign out.
+function AccountBar({ email, questions, isAdmin, onRedeem, onAdmin, onSignOut }) {
+  const link = 'rounded-full px-3 py-1 underline hover:bg-field'
   return (
-    <div className="flex flex-wrap items-center gap-3 text-sm">
+    <div className="flex flex-wrap items-center gap-2 text-sm">
       {email && <span className="text-on-ink-muted">{email}</span>}
-      {typeof credits === 'number' && (
+      {typeof questions === 'number' && (
         <span data-testid="credits" className="rounded-full border border-on-ink-muted px-3 py-0.5">
-          {credits} question {credits === 1 ? 'set' : 'sets'} left
+          {questions.toLocaleString('en-GB')} {questions === 1 ? 'question' : 'questions'} left
         </span>
       )}
-      <button type="button" onClick={onSignOut} className="rounded-full px-3 py-1 underline hover:bg-field">
+      {onRedeem && (
+        <button type="button" onClick={onRedeem} className={link}>
+          Redeem a code
+        </button>
+      )}
+      {isAdmin && (
+        <button type="button" onClick={onAdmin} className={link}>
+          Admin
+        </button>
+      )}
+      <button type="button" onClick={onSignOut} className={link}>
         Sign out
       </button>
     </div>

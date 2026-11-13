@@ -51,7 +51,7 @@ describe('the Amplify Lambda (hosted)', () => {
   })
 
   it('says so plainly if the deploy did not give it its sign-in and database settings', async () => {
-    for (const k of ['USER_POOL_ID', 'USER_POOL_CLIENT_ID', 'ACCOUNTS_TABLE', 'SETS_TABLE']) delete process.env[k]
+    for (const k of ['USER_POOL_ID', 'USER_POOL_CLIENT_ID', 'ACCOUNTS_TABLE', 'SETS_TABLE', 'CODES_TABLE']) delete process.env[k]
     const res = await handler(event(payload))
     expect(res.statusCode).toBe(500)
     expect(JSON.parse(res.body).error).toContain('not set up correctly')
@@ -64,6 +64,7 @@ describe('the Amplify Lambda (hosted)', () => {
         USER_POOL_CLIENT_ID: 'testclientid123',
         ACCOUNTS_TABLE: 'Accounts',
         SETS_TABLE: 'Sets',
+        CODES_TABLE: 'Codes',
       })
     })
 
