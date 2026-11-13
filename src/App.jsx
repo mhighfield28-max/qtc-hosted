@@ -260,7 +260,15 @@ export default function App({ user, signOut }) {
             onNext={() => go(4)}
           />
         )}
-        {step === 4 && <ExportScreen spec={spec} questions={questions} questionSet={questionSet} onBack={() => go(3)} />}
+        {step === 4 && (
+          <ExportScreen
+            spec={spec}
+            questions={questions}
+            questionSet={questionSet}
+            onFormats={(exportFormats) => setSpec((s) => ({ ...s, exportFormats }))}
+            onBack={() => go(3)}
+          />
+        )}
         </>}
       </main>
     </>

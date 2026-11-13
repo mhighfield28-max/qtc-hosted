@@ -3,11 +3,32 @@ import { LEVELS } from '../lib/distribution.js'
 import { EXPORT_FORMATS } from '../lib/specification.js'
 import { approvedOnly, buildExport } from '../lib/exporters.js'
 import { Card, Notice, PrimaryButton, ScreenFooter, SecondaryButton } from '../components/ui.jsx'
-import { Help } from '../components/Help.jsx'
+import { Help, HintWithHelp } from '../components/Help.jsx'
 
 const FORMAT_FILES = {
-  'Moodle GIFT': 'Moodle import (.txt, GIFT format)',
-  Blackboard: 'Blackboard import (.txt, tab-delimited)',
+  Canvas: { name: 'Canvas', file: 'QTI .zip' },
+  Blackboard: { name: 'Blackboard', file: '.txt, tab-delimited' },
+  Brightspace: { name: 'Brightspace (D2L)', file: '.csv' },
+  'Moodle GIFT': { name: 'Moodle', file: '.txt, GIFT format' },
+}
+const EXTENSION = { Canvas: '.zip', Blackboard: '.txt', Brightspace: '.csv', Moodle: '.txt' }
+
+// The platform chosen last time, so a returning lecturer doesn't pick it again. This browser only.
+const REMEMBER = 'qtc-export-formats'
+function rememberedFormats() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(REMEMBER) ?? '[]')
+    return Array.isArray(saved) ? saved.filter((f) => EXPORT_FORMATS.includes(f)) : []
+  } catch {
+    return []
+  }
+}
+function remember(formats) {
+  try {
+    localStorage.setItem(REMEMBER, JSON.stringify(formats))
+  } catch {
+    // Private windows can refuse storage; the choice just isn't remembered.
+  }
 }
 
 // Hands a file to the browser's download.
@@ -23,12 +44,21 @@ function saveFile(blob, fileName) {
 }
 
 const IMPORT_HELP = {
-  Moodle: 'In Moodle: Question bank → Import → GIFT format, then upload this .txt file.',
+  Canvas:
+    'In Canvas: Settings → Import Course Content → Content type: QTI .zip file → choose this file → Import. The quiz arrives unpublished, with a question bank.',
   Blackboard: 'In Blackboard: Question pool or test → Upload questions, then upload this .txt file.',
+  Brightspace: 'In Brightspace: Quizzes → Question Library → Import → Upload a File, choose this .csv, then Import All.',
+  Moodle: 'In Moodle: Question bank → Import → GIFT format, then upload this .txt file.',
 }
 
-export default function ExportScreen({ spec, questions, questionSet, onBack }) {
-  const [formats, setFormats] = useState(spec.exportFormats)
+export default function ExportScreen({ spec, questions, questionSet, onFormats, onBack }) {
+  const [formats, setFormatsState] = useState(() => (spec.exportFormats.length ? spec.exportFormats : rememberedFormats()))
+  const setFormats = (update) => {
+    const next = EXPORT_FORMATS.filter((f) => update(formats).includes(f))
+    setFormatsState(next)
+    remember(next)
+    onFormats?.(next)
+  }
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null) // { fileName, files, count } after a download
   const [error, setError] = useState(null)
@@ -88,12 +118,21 @@ export default function ExportScreen({ spec, questions, questionSet, onBack }) {
         </p>
 
         <fieldset>
-          <legend className="mb-2 font-medium">LMS import files</legend>
-          <div className="space-y-2">
+          <legend className="mb-1 font-medium">Which learning platform do you use?</legend>
+          <HintWithHelp topic="platforms" className="mb-3">Choose one or more. Each gets its own import file.</HintWithHelp>
+          <div className="grid gap-2 sm:grid-cols-2" id="exportFormats">
             {EXPORT_FORMATS.map((f) => (
-              <label key={f} className="flex items-center gap-2">
+              <label
+                key={f}
+                className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 ${
+                  formats.includes(f) ? 'border-field bg-field-tint' : 'border-line'
+                }`}
+              >
                 <input type="checkbox" className="h-5 w-5 accent-field" checked={formats.includes(f)} onChange={() => toggle(f)} />
-                {FORMAT_FILES[f]}
+                <span>
+                  <span className="font-medium">{FORMAT_FILES[f].name}</span>{' '}
+                  <span className="block text-sm text-muted">{FORMAT_FILES[f].file}</span>
+                </span>
               </label>
             ))}
           </div>
@@ -104,8 +143,8 @@ export default function ExportScreen({ spec, questions, questionSet, onBack }) {
           <li>Specification used (.md): the exact instructions the set was generated from</li>
         </ul>
         <p className="mt-4 text-sm text-muted">
-          All files download together as one .zip named after the module code and today's date. Moodle and Blackboard won't accept
-          the .zip: upload the LMS .txt file on its own. You can download it separately once the .zip is built.
+          All files download together as one .zip named after the module code and today's date. Your platform won't accept that
+          bundle: upload its own import file, which you can download separately once the bundle is built.
         </p>
       </Card>
 
@@ -122,12 +161,12 @@ export default function ExportScreen({ spec, questions, questionSet, onBack }) {
       {result?.lmsFiles.length > 0 && (
         <Card>
           <h2 className="mb-2 text-xl">Import into your LMS</h2>
-          <p className="mb-4">Upload the .txt file below, not the .zip. Your LMS rejects a .zip as the wrong file type.</p>
+          <p className="mb-4">Upload the file for your platform below, not the bundle .zip you just downloaded.</p>
           <ul className="space-y-4">
             {result.lmsFiles.map((f) => (
               <li key={f.name}>
-                <SecondaryButton onClick={() => saveFile(new Blob([f.content], { type: 'text/plain;charset=utf-8' }), f.name)}>
-                  Download {f.lms} file (.txt)
+                <SecondaryButton onClick={() => saveFile(new Blob([f.content], { type: f.type }), f.name)}>
+                  Download {f.lms} file ({EXTENSION[f.lms]})
                 </SecondaryButton>
                 <p className="mt-1 text-sm text-muted">
                   {f.name}. {IMPORT_HELP[f.lms]}
@@ -141,11 +180,17 @@ export default function ExportScreen({ spec, questions, questionSet, onBack }) {
       <ScreenFooter
         onBack={onBack}
         primary={
-          <PrimaryButton onClick={download} disabled={approved.length === 0 || busy || !questionSet}>
-            {busy ? 'Building…' : 'Download .zip'}
-          </PrimaryButton>
+          <div className="flex flex-col items-end gap-1">
+            <PrimaryButton onClick={download} disabled={approved.length === 0 || busy || !questionSet || formats.length === 0}>
+              {busy ? 'Building…' : 'Download .zip'}
+            </PrimaryButton>
+            {formats.length === 0 && approved.length > 0 && (
+              <p className="text-sm text-muted">Choose your learning platform first.</p>
+            )}
+          </div>
         }
       />
     </div>
   )
 }
+

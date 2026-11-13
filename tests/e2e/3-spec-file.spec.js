@@ -12,7 +12,8 @@ test('Item 3: import a specification file', async ({ page }) => {
   await expect(page.locator('#cases-2')).toHaveValue('Phase diagram of water from the Week 3 slides')
   await expect(page.getByLabel('Misconception 3', { exact: true })).toHaveValue('Bubbles in boiling water are air, not water vapour')
   await expect(page.getByLabel('Time available (minutes)', { exact: true })).toHaveValue('40')
-  await expect(page.getByLabel('Blackboard', { exact: true })).toBeChecked()
+  // Export formats are chosen on the Export screen now, not in Set up
+  await expect(page.getByRole('checkbox', { name: /Blackboard/ })).toHaveCount(0)
   await expect(page.getByTestId('error-summary')).toHaveCount(0)
   await shot(page, '3a-imported-spec')
 })

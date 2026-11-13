@@ -40,6 +40,214 @@ export function toBlackboard(questions) {
   return `${lines.join('\n')}\n`
 }
 
+// Markdown bold (**NOT**, from house rule A3.3) becomes plain capitals for text-only formats.
+const plain = (text) => oneLine(text).replace(/\*\*(.+?)\*\*/g, '$1')
+
+// ---------- Brightspace (CSV) ----------
+
+// Brightspace's Question Library CSV: one block of rows per question, laid out as in D2L's own
+// Sample_Question_Import_UTF8.csv. Every field is quoted, because an unquoted comma silently cuts
+// the text short. Saved as UTF-8 with a byte-order mark so accented letters survive.
+const csvField = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
+const csvRow = (...cells) => [...cells, '', '', '', '', ''].slice(0, 5).map(csvField).join(',')
+
+export function toBrightspace(questions, { moduleCode = 'QTC' } = {}) {
+  const code = String(moduleCode).replace(/[^\w-]+/g, '') || 'QTC'
+  const blocks = questions.map((q) => {
+    const n = String(number(q)).padStart(2, '0')
+    return [
+      csvRow('NewQuestion', 'MC'),
+      csvRow('ID', `${code}-Q${n}`),
+      csvRow('Title', `Q${n} ${q.level} ${q.outcome}`),
+      csvRow('QuestionText', plain(q.stem)),
+      csvRow('Points', '1'),
+      ...q.options.map((o) => csvRow('Option', o.isKey ? '100' : '0', plain(o.text))),
+      csvRow(),
+    ].join('\r\n')
+  })
+  return `\uFEFF${blocks.join('\r\n')}\r\n`
+}
+
+// ---------- Canvas (QTI 1.2 .zip) ----------
+
+// Canvas imports a QTI 1.2 package through Settings → Import Course Content → QTI .zip file.
+// The layout follows text2qti (Geoffrey Poore's open-source converter, widely used with Canvas):
+// imsmanifest.xml, then a folder holding the questions and Canvas's quiz settings (assessment_meta.xml).
+// The quiz arrives unpublished, one point per question, answers in the order written.
+const html = (text) => `<p>${xml(oneLine(text)).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</p>`
+
+function canvasItem(q, prefix) {
+  const n = String(number(q)).padStart(2, '0')
+  const id = `${prefix}_q${n}`
+  const choiceId = (o) => `${id}_${o.label.toLowerCase()}`
+  const key = q.options.find((o) => o.isKey)
+  return `      <item ident="${id}" title="${xml(`Q${n} ${q.level} ${q.outcome}`)}">
+        <itemmetadata>
+          <qtimetadata>
+            <qtimetadatafield><fieldlabel>question_type</fieldlabel><fieldentry>multiple_choice_question</fieldentry></qtimetadatafield>
+            <qtimetadatafield><fieldlabel>points_possible</fieldlabel><fieldentry>1</fieldentry></qtimetadatafield>
+            <qtimetadatafield><fieldlabel>original_answer_ids</fieldlabel><fieldentry>${q.options.map(choiceId).join(',')}</fieldentry></qtimetadatafield>
+            <qtimetadatafield><fieldlabel>assessment_question_identifierref</fieldlabel><fieldentry>${id}_ref</fieldentry></qtimetadatafield>
+          </qtimetadata>
+        </itemmetadata>
+        <presentation>
+          <material>
+            <mattext texttype="text/html">${xml(html(q.stem))}</mattext>
+          </material>
+          <response_lid ident="response1" rcardinality="Single">
+            <render_choice>
+${q.options
+  .map(
+    (o) => `              <response_label ident="${choiceId(o)}">
+                <material>
+                  <mattext texttype="text/html">${xml(html(o.text))}</mattext>
+                </material>
+              </response_label>`,
+  )
+  .join('\n')}
+            </render_choice>
+          </response_lid>
+        </presentation>
+        <resprocessing>
+          <outcomes>
+            <decvar maxvalue="100" minvalue="0" varname="SCORE" vartype="Decimal"/>
+          </outcomes>
+          <respcondition continue="No">
+            <conditionvar>
+              <varequal respident="response1">${key ? choiceId(key) : ''}</varequal>
+            </conditionvar>
+            <setvar action="Set" varname="SCORE">100</setvar>
+          </respcondition>
+        </resprocessing>
+      </item>`
+}
+
+export function canvasAssessmentXml(questions, { id, title }) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<questestinterop xmlns="http://www.imsglobal.org/xsd/ims_qtiasiv1p2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.imsglobal.org/xsd/ims_qtiasiv1p2 http://www.imsglobal.org/xsd/ims_qtiasiv1p2p1.xsd">
+  <assessment ident="${id}" title="${xml(title)}">
+    <qtimetadata>
+      <qtimetadatafield><fieldlabel>cc_maxattempts</fieldlabel><fieldentry>1</fieldentry></qtimetadatafield>
+    </qtimetadata>
+    <section ident="root_section">
+${questions.map((q) => canvasItem(q, id)).join('\n')}
+    </section>
+  </assessment>
+</questestinterop>
+`
+}
+
+export function canvasMetaXml(questions, { id, title, description }) {
+  const points = `${questions.length}.0`
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<quiz identifier="${id}" xmlns="http://canvas.instructure.com/xsd/cccv1p0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://canvas.instructure.com/xsd/cccv1p0 https://canvas.instructure.com/xsd/cccv1p0.xsd">
+  <title>${xml(title)}</title>
+  <description>${xml(`<p>${xml(description)}</p>`)}</description>
+  <shuffle_answers>false</shuffle_answers>
+  <scoring_policy>keep_highest</scoring_policy>
+  <hide_results></hide_results>
+  <quiz_type>assignment</quiz_type>
+  <points_possible>${points}</points_possible>
+  <require_lockdown_browser>false</require_lockdown_browser>
+  <require_lockdown_browser_for_results>false</require_lockdown_browser_for_results>
+  <require_lockdown_browser_monitor>false</require_lockdown_browser_monitor>
+  <lockdown_browser_monitor_data/>
+  <show_correct_answers>false</show_correct_answers>
+  <anonymous_submissions>false</anonymous_submissions>
+  <could_be_locked>false</could_be_locked>
+  <allowed_attempts>1</allowed_attempts>
+  <one_question_at_a_time>false</one_question_at_a_time>
+  <cant_go_back>false</cant_go_back>
+  <available>false</available>
+  <one_time_results>false</one_time_results>
+  <show_correct_answers_last_attempt>false</show_correct_answers_last_attempt>
+  <only_visible_to_overrides>false</only_visible_to_overrides>
+  <module_locked>false</module_locked>
+  <assignment identifier="${id}_assignment">
+    <title>${xml(title)}</title>
+    <due_at/>
+    <lock_at/>
+    <unlock_at/>
+    <module_locked>false</module_locked>
+    <workflow_state>unpublished</workflow_state>
+    <assignment_overrides>
+    </assignment_overrides>
+    <quiz_identifierref>${id}</quiz_identifierref>
+    <allowed_extensions></allowed_extensions>
+    <has_group_category>false</has_group_category>
+    <points_possible>${points}</points_possible>
+    <grading_type>points</grading_type>
+    <all_day>false</all_day>
+    <submission_types>online_quiz</submission_types>
+    <position>1</position>
+    <turnitin_enabled>false</turnitin_enabled>
+    <vericite_enabled>false</vericite_enabled>
+    <peer_review_count>0</peer_review_count>
+    <peer_reviews>false</peer_reviews>
+    <automatic_peer_reviews>false</automatic_peer_reviews>
+    <anonymous_peer_reviews>false</anonymous_peer_reviews>
+    <grade_group_students_individually>false</grade_group_students_individually>
+    <freeze_on_copy>false</freeze_on_copy>
+    <omit_from_final_grade>false</omit_from_final_grade>
+    <intra_group_peer_reviews>false</intra_group_peer_reviews>
+    <only_visible_to_overrides>false</only_visible_to_overrides>
+    <post_to_sis>false</post_to_sis>
+    <moderated_grading>false</moderated_grading>
+    <grader_count>0</grader_count>
+    <grader_comments_visible_to_graders>true</grader_comments_visible_to_graders>
+    <anonymous_grading>false</anonymous_grading>
+    <graders_anonymous_to_graders>false</graders_anonymous_to_graders>
+    <grader_names_visible_to_final_grader>true</grader_names_visible_to_final_grader>
+    <anonymous_instructor_annotations>false</anonymous_instructor_annotations>
+    <post_policy>
+      <post_manually>false</post_manually>
+    </post_policy>
+  </assignment>
+  <assignment_group_identifierref>${id}_assignment-group</assignment_group_identifierref>
+  <assignment_overrides>
+  </assignment_overrides>
+</quiz>
+`
+}
+
+export function canvasManifestXml({ id, title, date }) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<manifest identifier="${id}_manifest" xmlns="http://www.imsglobal.org/xsd/imsccv1p1/imscp_v1p1" xmlns:lom="http://ltsc.ieee.org/xsd/imsccv1p1/LOM/resource" xmlns:imsmd="http://www.imsglobal.org/xsd/imsmd_v1p2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.imsglobal.org/xsd/imsccv1p1/imscp_v1p1 http://www.imsglobal.org/xsd/imscp_v1p1.xsd http://ltsc.ieee.org/xsd/imsccv1p1/LOM/resource http://www.imsglobal.org/profile/cc/ccv1p1/LOM/ccv1p1_lomresource_v1p0.xsd http://www.imsglobal.org/xsd/imsmd_v1p2 http://www.imsglobal.org/xsd/imsmd_v1p2p2.xsd">
+  <metadata>
+    <schema>IMS Content</schema>
+    <schemaversion>1.1.3</schemaversion>
+    <imsmd:lom>
+      <imsmd:general>
+        <imsmd:title><imsmd:string>${xml(title)}</imsmd:string></imsmd:title>
+      </imsmd:general>
+      <imsmd:lifeCycle>
+        <imsmd:contribute><imsmd:date><imsmd:dateTime>${date}</imsmd:dateTime></imsmd:date></imsmd:contribute>
+      </imsmd:lifeCycle>
+    </imsmd:lom>
+  </metadata>
+  <organizations/>
+  <resources>
+    <resource identifier="${id}" type="imsqti_xmlv1p2">
+      <file href="${id}/${id}.xml"/>
+      <dependency identifierref="${id}_dependency"/>
+    </resource>
+    <resource identifier="${id}_dependency" type="associatedcontent/imscc_xmlv1p1/learning-application-resource" href="${id}/assessment_meta.xml">
+      <file href="${id}/assessment_meta.xml"/>
+    </resource>
+  </resources>
+</manifest>
+`
+}
+
+// Builds the QTI .zip Canvas imports. id must be letters, numbers and underscores.
+export async function toCanvas(questions, { id, title, description, date }) {
+  const zip = new JSZip()
+  zip.file('imsmanifest.xml', canvasManifestXml({ id, title, date }))
+  zip.file(`${id}/${id}.xml`, canvasAssessmentXml(questions, { id, title }))
+  zip.file(`${id}/assessment_meta.xml`, canvasMetaXml(questions, { id, title, description }))
+  return zip.generateAsync({ type: 'uint8array' })
+}
+
 // ---------- Review sheet (.docx) ----------
 
 const xml = (text) =>
@@ -118,7 +326,7 @@ export const isoDate = (d) => {
 const formatDate = (d) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 const safeName = (s) => String(s).replace(/[^\p{L}\p{N}_-]+/gu, '-').replace(/^-+|-+$/g, '') || 'questions'
 
-// Builds the zip. formats: which LMS files to include ('Moodle GIFT', 'Blackboard').
+// Builds the zip. formats: which LMS files to include ('Canvas', 'Blackboard', 'Brightspace', 'Moodle GIFT').
 // The review sheet and the specification are always included.
 // output: 'blob' in the browser; tests in Node use 'uint8array'.
 export async function buildExport({ questions, formats, questionSet, moduleName, exportedAt = new Date(), output = 'blob' }) {
@@ -128,9 +336,25 @@ export async function buildExport({ questions, formats, questionSet, moduleName,
   const base = `${code}_${isoDate(exportedAt)}`
   // The LMS import files are also returned on their own: Moodle and Blackboard only accept
   // the .txt itself, so uploading the .zip is rejected ("application/zip does not match text/plain").
+  // Canvas is the exception: it imports a QTI .zip, which sits inside the bundle and also downloads on its own.
   const lmsFiles = []
-  if (formats.includes('Moodle GIFT')) lmsFiles.push({ lms: 'Moodle', name: `${base}_moodle-gift.txt`, content: toGift(approved) })
-  if (formats.includes('Blackboard')) lmsFiles.push({ lms: 'Blackboard', name: `${base}_blackboard.txt`, content: toBlackboard(approved) })
+  const date = isoDate(exportedAt)
+  if (formats.includes('Canvas')) {
+    const id = `qtc_${code.replace(/[^A-Za-z0-9]/g, '_')}_${date.replace(/-/g, '')}`
+    const title = `${moduleName || questionSet.moduleCode}: questions (${formatDate(exportedAt)})`
+    const description = `${approved.length} questions written with Questions That Count and reviewed before export.`
+    lmsFiles.push({
+      lms: 'Canvas',
+      name: `${base}_canvas-qti.zip`,
+      type: 'application/zip',
+      content: await toCanvas(approved, { id, title, description, date }),
+    })
+  }
+  if (formats.includes('Blackboard')) lmsFiles.push({ lms: 'Blackboard', name: `${base}_blackboard.txt`, type: 'text/plain', content: toBlackboard(approved) })
+  if (formats.includes('Brightspace')) {
+    lmsFiles.push({ lms: 'Brightspace', name: `${base}_brightspace.csv`, type: 'text/csv', content: toBrightspace(approved, { moduleCode: questionSet.moduleCode }) })
+  }
+  if (formats.includes('Moodle GIFT')) lmsFiles.push({ lms: 'Moodle', name: `${base}_moodle-gift.txt`, type: 'text/plain', content: toGift(approved) })
   const files = [...lmsFiles]
   files.push({
     name: `${base}_review-sheet.docx`,

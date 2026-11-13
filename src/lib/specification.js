@@ -12,7 +12,8 @@ import {
   emptyDistribution,
 } from './distribution.js'
 
-export const EXPORT_FORMATS = ['Moodle GIFT', 'Blackboard']
+// The learning platforms questions can be exported for. Chosen on the Export screen.
+export const EXPORT_FORMATS = ['Canvas', 'Blackboard', 'Brightspace', 'Moodle GIFT']
 
 export function emptySpec() {
   return {
@@ -90,8 +91,6 @@ export function validateSpec(spec) {
     errors.gradeShare = 'Enter the share of the module grade, from 0 to 100%.'
   }
 
-  if (spec.exportFormats.length < 1) errors.exportFormats = 'Choose at least one export format.'
-
   return errors
 }
 
@@ -144,7 +143,7 @@ ${spec.misconceptions.map((m) => `| ${cell(m.text)} |`).join('\n')}
 
 ### B6. Output
 
-- Export formats: ${spec.exportFormats.join(', ')}
+- Export formats: ${spec.exportFormats.length ? spec.exportFormats.join(', ') : 'chosen on the Export screen'}
 - Review: every question is reviewed by me against A5 before import
 `
 
@@ -280,9 +279,8 @@ export function specFromMarkdown(text) {
   }
 
   const formats = lineValue(s['6'], 'Export formats').toLowerCase()
-  spec.exportFormats = EXPORT_FORMATS.filter((f) =>
-    f === 'Moodle GIFT' ? /moodle|gift/.test(formats) : formats.includes('blackboard'),
-  )
+  const named = { Canvas: /canvas|qti/, Blackboard: /blackboard/, Brightspace: /brightspace|d2l/, 'Moodle GIFT': /moodle|gift/ }
+  spec.exportFormats = EXPORT_FORMATS.filter((f) => named[f].test(formats))
 
   return { spec, warnings }
 }

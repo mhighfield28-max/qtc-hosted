@@ -174,12 +174,21 @@ To check after deploy:
 - [ ] Open a few "?" buttons and read the help text; edit `src/content/helpText.js` where it doesn't sound right
 - [ ] Download a specification, then import it again: no question about house rules
 
+## Launch prep 3: Canvas and Brightspace exports (built 13 Nov 2026)
+
+- The platform is now chosen on the Export screen, not in Set up (B6 is gone from the form). Choices are Canvas, Blackboard, Brightspace (D2L) and Moodle, and each gets its own import file. A specification that names platforms pre-ticks them, and the last choice is remembered in that browser.
+- **Canvas:** a QTI 1.2 .zip, laid out like text2qti (an open-source converter widely used with Canvas). It's imported through Settings → Import Course Content → QTI .zip file and arrives as an unpublished quiz with a question bank. Checked with Canvas's own open-source QTI migration tool (instructure/QTIMigrationTool), which Canvas runs on QTI imports: every question converted as multiple choice, with the right key and the stem's bold intact.
+- **Brightspace:** a Question Library .csv in the layout of D2L's own sample file (NewQuestion, ID, Title, QuestionText, Points and Option rows; the key scores 100). Every field is quoted and the file is UTF-8 with a byte-order mark. It reads back cleanly with a standard CSV reader.
+- Neither has been imported into a live Canvas or Brightspace yet: no test instance. Beta testers on those platforms should try an import first and report back.
+
+To check after deploy:
+- [ ] Ask one Canvas tester and one Brightspace tester to import a small set and send a screenshot of the result
+
 ## Next
 
 - Mike: delete the phase-1-signin-metering branch on GitHub (Delete branch button on PR #1); Claude can't delete branches from here.
 - Mike: add MCQ_CLAUDE_KEY as a GitHub repository secret, run the Cost test, and add a real module (e.g. Holderness) to cost-test/modules.
 - Claude: build the blind review sheet from the results; Mike rates it; then choose the model and set prices.
-- Claude: PR C, Canvas QTI and Brightspace exports, with the format choice moved to the Export screen.
 - Claude: PR D, Payhip licence keys in the Redeem box (packs of 100, 300 and 800 questions).
 - Claude: draft the privacy notice and terms of use for a lawyer to check.
 - Then Phase 2 (account page and saved work) when Mike says go.

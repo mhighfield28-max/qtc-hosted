@@ -11,7 +11,6 @@ import {
   timeFit,
 } from '../lib/distribution.js'
 import {
-  EXPORT_FORMATS,
   houseRulesFromMarkdown,
   isDistributionChanged,
   specFromMarkdown,
@@ -28,7 +27,7 @@ import {
   SecondaryButton,
   inputClass,
 } from '../components/ui.jsx'
-import { Help, useHelp } from '../components/Help.jsx'
+import { Help, HintWithHelp, useHelp } from '../components/Help.jsx'
 import { LevelBlock } from '../components/LevelBlock.jsx'
 
 const idFor = (key) => key.replace(/\./g, '-')
@@ -575,51 +574,7 @@ export default function SetupScreen({
         </div>
       </Card>
 
-      {/* B6 */}
-      <Card>
-        <h2 className="mb-4 text-xl">B6. Output</h2>
-        <fieldset>
-          <legend className={labelClass}>Export formats</legend>
-          <HintWithHelp topic="exportFormats">Which files you want at the end. You can change this when you export.</HintWithHelp>
-          <div className="flex flex-wrap gap-6" id="exportFormats" tabIndex={-1}>
-            {EXPORT_FORMATS.map((f) => (
-              <label key={f} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 accent-field"
-                  checked={spec.exportFormats.includes(f)}
-                  onChange={(e) =>
-                    update({
-                      exportFormats: e.target.checked
-                        ? EXPORT_FORMATS.filter((x) => x === f || spec.exportFormats.includes(x))
-                        : spec.exportFormats.filter((x) => x !== f),
-                    })
-                  }
-                />
-                {f}
-              </label>
-            ))}
-          </div>
-          <FieldError id="exportFormats-error" message={err('exportFormats')} />
-        </fieldset>
-      </Card>
-
       <ScreenFooter primary={<PrimaryButton onClick={handleNext}>Continue to Content →</PrimaryButton>} />
-    </div>
-  )
-}
-
-// A hint line under a legend, with a "?" beside it. (A legend has to stay the fieldset's first child,
-// so the help button goes on the hint line instead.)
-function HintWithHelp({ topic, children }) {
-  const [button, panel] = useHelp(topic)
-  return (
-    <div className="mb-2">
-      <div className="flex items-start gap-2">
-        <p className="text-sm text-muted">{children}</p>
-        {button}
-      </div>
-      {panel}
     </div>
   )
 }
