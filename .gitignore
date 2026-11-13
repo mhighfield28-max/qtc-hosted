@@ -157,3 +157,6 @@ evidence/
 # Amplify
 .amplify/
 amplify_outputs*
+
+# Cost test results (saved to their own branch by the GitHub Action)
+cost-results/

@@ -1,0 +1,8 @@
+{
+  "_note": "The settings the cost test compares. effort null means the setting is left out and the model uses its own default.",
+  "opus-high": { "model": "claude-opus-5-5", "effort": "high", "label": "Opus 5.5, high effort (current)" },
+  "opus-medium": { "model": "claude-opus-5-5", "effort": "medium", "label": "Opus 5.5, medium effort" },
+  "sonnet-high": { "model": "claude-sonnet-5-5", "effort": "high", "label": "Sonnet 5.5, high effort" },
+  "sonnet-medium": { "model": "claude-sonnet-5-5", "effort": "medium", "label": "Sonnet 5.5, medium effort" },
+  "haiku": { "model": "claude-haiku-5-5", "effort": null, "label": "Haiku 5.5, default effort" }
+}

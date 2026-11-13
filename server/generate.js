@@ -22,7 +22,11 @@ export class RequestError extends Error {
 
 // The specification is the AI's instructions: it goes in as the system prompt, unchanged.
 // The teaching content goes in as source documents. Only this question's details are added.
-export function buildRequest({ specification, sources, slot, total, previousStems = [], replacing, note, retryProblems }) {
+// `overrides` ({ model, effort }) is used only by the cost test (scripts/cost-test.mjs);
+// the app always uses config/settings.json. An effort of null leaves the setting out.
+export function buildRequest({ specification, sources, slot, total, previousStems = [], replacing, note, retryProblems }, overrides = {}) {
+  const model = overrides.model ?? settings.model
+  const effort = overrides.effort === undefined ? settings.effort : overrides.effort
   const documents = sources.map((s, i) => ({
     type: 'document',
     source: { type: 'text', media_type: 'text/plain', data: s.text },
@@ -59,10 +63,10 @@ export function buildRequest({ specification, sources, slot, total, previousStem
   }
 
   return {
-    model: settings.model,
+    model,
     max_tokens: settings.maxTokens,
     output_config: {
-      effort: settings.effort,
+      ...(effort ? { effort } : {}),
       format: { type: 'json_schema', schema: QUESTION_JSON_SCHEMA },
     },
     // If a safety classifier declines, the API retries on Anthropic's recommended fallback model.
@@ -122,7 +126,7 @@ function validatePayload(p) {
 
 // Returns { question } on success, or { flagged } after two unusable replies.
 // `client` can be swapped for a fake in tests.
-export async function generateQuestion(payload, { apiKey, client } = {}) {
+export async function generateQuestion(payload, { apiKey, client, overrides } = {}) {
   validatePayload(payload)
   if (!client) {
     if (!apiKey) {
@@ -134,7 +138,7 @@ export async function generateQuestion(payload, { apiKey, client } = {}) {
   const attempts = []
   const usage = emptyUsage()
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const request = buildRequest({ ...payload, retryProblems: attempts.at(-1)?.problems })
+    const request = buildRequest({ ...payload, retryProblems: attempts.at(-1)?.problems }, overrides)
     let message
     try {
       message = await client.beta.messages.create(request)
