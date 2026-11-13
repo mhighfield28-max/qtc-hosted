@@ -127,13 +127,6 @@ const HELP = {
     ],
   },
 
-  exportFormats: {
-    title: 'Export formats',
-    body: [
-      'Which files you want at the end, for the learning platform you use. You can change this on the Export screen.',
-    ],
-  },
-
   // ---------- Content ----------
 
   whatToUpload: {
@@ -234,6 +227,22 @@ const HELP = {
     body: [
       'One .zip file with the approved questions in the formats you choose, a review sheet listing every question with its level and outcome, and the specification used.',
       'Keep the review sheet and specification with your exam records: they show how the paper was designed.',
+    ],
+  },
+
+  platforms: {
+    title: 'Which file for which platform',
+    body: [
+      {
+        list: [
+          'Canvas: a QTI .zip. It arrives as an unpublished quiz, plus a question bank.',
+          'Blackboard: a .txt file for Upload Questions in a test or pool.',
+          'Brightspace (D2L): a .csv file for the Question Library.',
+          'Moodle: a .txt file in GIFT format for the question bank.',
+        ],
+      },
+      'Upload the file for your platform on its own, not the bundle .zip: platforms reject the bundle. Each question is worth one point and the answers stay in the order you approved. You can change both in your platform after importing.',
+      'Using something else? Most platforms can import one of these. Ask your learning technology team which.',
     ],
   },
 

@@ -9,7 +9,7 @@ describe('validateSpec', () => {
     const errors = validateSpec(emptySpec())
     for (const key of [
       'moduleName', 'studyLevel', 'outcomes.0.text', 'outcomes.0.level', 'cases.0',
-      'misconceptions.0.text', 'misconceptions.1.text', 'questionCount', 'timeAvailable', 'gradeShare', 'exportFormats',
+      'misconceptions.0.text', 'misconceptions.1.text', 'questionCount', 'timeAvailable', 'gradeShare',
     ]) {
       expect(errors).toHaveProperty(key)
     }
@@ -52,7 +52,7 @@ describe('specification files', () => {
     expect(spec.questionCount).toBe(20)
     expect(spec.timeAvailable).toBe('40')
     expect(spec.gradeShare).toBe('20')
-    expect(spec.exportFormats).toEqual(['Moodle GIFT', 'Blackboard'])
+    expect(spec.exportFormats).toEqual(['Blackboard', 'Moodle GIFT'])
   })
 
   it('round-trips through download and import, including a changed distribution and awkward characters', () => {

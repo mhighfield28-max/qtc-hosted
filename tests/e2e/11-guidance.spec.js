@@ -19,7 +19,7 @@ test('Guidance: every "?" opens its help and closes it again', async ({ page }) 
 
   // Every help button on the Set up screen has text behind it
   const buttons = page.locator('[data-help]')
-  expect(await buttons.count()).toBeGreaterThanOrEqual(12)
+  expect(await buttons.count()).toBeGreaterThanOrEqual(11)
 })
 
 test('Guidance: import and download name both parts, with the tooltip', async ({ page }) => {

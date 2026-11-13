@@ -20,7 +20,6 @@ test('Item 2: validates every required field', async ({ page }) => {
     'Choose 20, 30 or 40 questions.',
     'Enter the time available in minutes.',
     'Enter the share of the module grade, from 0 to 100%.',
-    'Choose at least one export format.',
   ]) {
     await expect(summary.getByRole('link', { name: msg })).toBeVisible()
   }
@@ -38,7 +37,6 @@ test('Item 2: validates every required field', async ({ page }) => {
   await page.getByLabel('Number of questions', { exact: true }).selectOption('20')
   await page.getByLabel('Time available (minutes)', { exact: true }).fill('40')
   await page.getByLabel('Share of module grade (%)', { exact: true }).fill('20')
-  await page.getByLabel('Moodle GIFT', { exact: true }).check()
   await expect(summary).toHaveCount(0)
   await page.getByRole('button', { name: 'Continue to Content' }).click()
   await expect(page.getByRole('heading', { name: 'Content', level: 1 })).toBeVisible()

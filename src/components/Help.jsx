@@ -76,3 +76,18 @@ export function Help({ topic, children, className = '' }) {
     </div>
   )
 }
+
+// A hint line with a "?" beside it. Used under a fieldset's legend: a legend has to stay the
+// fieldset's first child, so the help button goes on the hint line instead.
+export function HintWithHelp({ topic, children, className = 'mb-2' }) {
+  const [button, panel] = useHelp(topic)
+  return (
+    <div className={className}>
+      <div className="flex items-start gap-2">
+        <p className="text-sm text-muted">{children}</p>
+        {button}
+      </div>
+      {panel}
+    </div>
+  )
+}

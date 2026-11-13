@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest'
 import JSZip from 'jszip'
 import mammoth from 'mammoth'
 import { SAMPLE_QUESTIONS } from '../fixtures/sampleQuestions.js'
-import { approvedOnly, buildExport, escapeGift, toBlackboard, toGift, toReviewSheet } from '../../src/lib/exporters.js'
+import {
+  approvedOnly, buildExport, escapeGift, toBlackboard, toBrightspace, toCanvas, toGift, toReviewSheet,
+} from '../../src/lib/exporters.js'
 
 const approve = (qs) => qs.map((q) => ({ ...structuredClone(q), status: 'approved' }))
 
@@ -90,6 +92,86 @@ describe('Blackboard', () => {
   })
 })
 
+// A small CSV reader (RFC 4180: quoted fields, "" for a quote), to prove what Brightspace reads back.
+function readCsv(text) {
+  const rows = []
+  let row = []
+  let field = ''
+  let quoted = false
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (quoted) {
+      if (c === '"' && text[i + 1] === '"') { field += '"'; i++ }
+      else if (c === '"') quoted = false
+      else field += c
+    } else if (c === '"') quoted = true
+    else if (c === ',') { row.push(field); field = '' }
+    else if (c === '\n') { row.push(field); rows.push(row); row = []; field = '' }
+    else if (c !== '\r') field += c
+  }
+  return rows
+}
+
+describe('Brightspace', () => {
+  it("follows D2L's sample layout: one block of rows per question, key at 100", () => {
+    const text = toBrightspace(approve([SAMPLE_QUESTIONS[0]]), { moduleCode: 'PHY101' })
+    expect(text.startsWith('\uFEFF')).toBe(true)
+    expect(text).toContain('\r\n')
+    const rows = readCsv(text.slice(1))
+    const q = SAMPLE_QUESTIONS[0]
+    expect(rows.slice(0, 5)).toEqual([
+      ['NewQuestion', 'MC', '', '', ''],
+      ['ID', 'PHY101-Q01', '', '', ''],
+      ['Title', `Q01 ${q.level} ${q.outcome}`, '', '', ''],
+      ['QuestionText', q.stem, '', '', ''],
+      ['Points', '1', '', '', ''],
+    ])
+    const options = rows.filter((r) => r[0] === 'Option')
+    expect(options.map((r) => r[2])).toEqual(q.options.map((o) => o.text))
+    expect(options.map((r) => r[1])).toEqual(q.options.map((o) => (o.isKey ? '100' : '0')))
+    expect(rows.every((r) => r.length === 5)).toBe(true)
+  })
+
+  it('keeps commas, quotes and accents intact, and turns **bold** into plain capitals', () => {
+    const rows = readCsv(toBrightspace([TRICKY]).slice(1))
+    expect(rows.find((r) => r[0] === 'QuestionText')[1]).toBe(
+      'Ratio 2:1 at 120 °C; what is {x} = "boiling" ~ #1 in C:\\temp when the lid is NOT on?',
+    )
+    expect(rows.filter((r) => r[0] === 'Option').map((r) => r[2])).toEqual(TRICKY.options.map((o) => o.text))
+    expect(rows.find((r) => r[0] === 'ID')[1]).toBe('QTC-Q07')
+  })
+})
+
+describe('Canvas', () => {
+  const info = { id: 'qtc_PHY101_20261020', title: 'Physics: questions', description: '2 questions', date: '2026-10-20' }
+
+  it('builds the QTI 1.2 package Canvas imports: manifest, questions and quiz settings', async () => {
+    const zip = await JSZip.loadAsync(await toCanvas(approve(SAMPLE_QUESTIONS.slice(0, 2)), info))
+    expect(Object.keys(zip.files).filter((f) => !zip.files[f].dir).sort()).toEqual([
+      'imsmanifest.xml', 'qtc_PHY101_20261020/assessment_meta.xml', 'qtc_PHY101_20261020/qtc_PHY101_20261020.xml',
+    ])
+    const manifest = await zip.file('imsmanifest.xml').async('string')
+    expect(manifest).toContain('type="imsqti_xmlv1p2"')
+    expect(manifest).toContain('<file href="qtc_PHY101_20261020/qtc_PHY101_20261020.xml"/>')
+    const meta = await zip.file('qtc_PHY101_20261020/assessment_meta.xml').async('string')
+    expect(meta).toContain('<workflow_state>unpublished</workflow_state>')
+    expect(meta).toContain('<points_possible>2.0</points_possible>')
+  })
+
+  it('marks one key per question and escapes the text, with **bold** as <strong>', async () => {
+    const zip = await JSZip.loadAsync(await toCanvas([TRICKY], info))
+    const doc = await zip.file('qtc_PHY101_20261020/qtc_PHY101_20261020.xml').async('string')
+    expect(doc.match(/<item /g)).toHaveLength(1)
+    expect(doc).toContain('<fieldentry>multiple_choice_question</fieldentry>')
+    expect(doc.match(/<response_label /g)).toHaveLength(3)
+    expect(doc).toContain('<varequal respident="response1">qtc_PHY101_20261020_q07_a</varequal>')
+    // The stem is HTML inside XML, so it is escaped twice: once for HTML and once for XML.
+    expect(doc).toContain('&lt;strong&gt;NOT&lt;/strong&gt;')
+    expect(doc).toContain('&amp;quot;boiling&amp;quot;')
+    expect(doc).not.toMatch(/<mattext[^>]*>[^<]*"boiling"/)
+  })
+})
+
 describe('review sheet', () => {
   it('is a Word file that opens, with every approved question, key, level, misconception and source', async () => {
     const bytes = await toReviewSheet(approve([SAMPLE_QUESTIONS[0], TRICKY]), {
@@ -137,5 +219,21 @@ describe('the zip', () => {
       moduleName: 'M', exportedAt: new Date(2026, 9, 20), output: 'uint8array',
     })
     expect(out.files.some((f) => f.includes('moodle'))).toBe(false)
+  })
+
+  it('adds the Canvas .zip and the Brightspace .csv when chosen, and offers each on its own', async () => {
+    const out = await buildExport({
+      questions: approve(SAMPLE_QUESTIONS.slice(0, 3)), formats: ['Canvas', 'Brightspace'],
+      questionSet: { moduleCode: 'PHY101', generatedAt: '2026-10-20T10:00:00Z', specification: 'x' },
+      moduleName: 'Physical Science Foundations', exportedAt: new Date(2026, 9, 20), output: 'uint8array',
+    })
+    expect(out.lmsFiles.map((f) => [f.lms, f.name, f.type])).toEqual([
+      ['Canvas', 'PHY101_2026-10-20_canvas-qti.zip', 'application/zip'],
+      ['Brightspace', 'PHY101_2026-10-20_brightspace.csv', 'text/csv'],
+    ])
+    const canvas = await JSZip.loadAsync(out.lmsFiles[0].content)
+    expect(await canvas.file('qtc_PHY101_20261020/assessment_meta.xml').async('string')).toContain(
+      '<title>Physical Science Foundations: questions (20 October 2026)</title>',
+    )
   })
 })
