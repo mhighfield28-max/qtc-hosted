@@ -155,8 +155,8 @@ Notes:
 - New DynamoDB table: Codes. Accounts from before (set credits) are converted at 20 questions per set credit.
 
 To check after deploy:
-- [ ] Set ADMIN_EMAILS in Amplify (Hosting, Environment variables) to your email, then redeploy
-- [ ] Open app.mikehighfield.ai/#admin, make one code, sign in with a second email and redeem it: 200 questions
+- [x] Set ADMIN_EMAILS in Amplify (Hosting, Environment variables) to your email, then redeploy (done 13 Nov: three addresses; Mike signs in with the altcampusonline one)
+- [x] Open app.mikehighfield.ai/#admin, make one code and redeem it: 200 questions (done 13 Nov on Mike's own account: 60 → 260. Old set credits converted at 20 questions each, as planned)
 - [ ] Generate a set: the counter falls by one per question written; regenerating doesn't change it
 - [ ] A new account with no code sees the waiting list screen, and appears on the admin page after joining
 
@@ -186,6 +186,8 @@ To check after deploy:
 
 ## Next
 
+- **Before inviting testers:** send sign-up codes from our own domain (no-reply@mikehighfield.ai) through Amazon SES. AWS's built-in sender limits sign-ups to 50 a day and its emails don't reliably reach Gmail: Mike's own Gmail address never got its code. This needs DNS records in Cloudflare, SES production access and a small change in amplify/auth/resource.ts.
+- Then test the waiting list with a brand-new account.
 - Mike: delete the phase-1-signin-metering branch on GitHub (Delete branch button on PR #1); Claude can't delete branches from here.
 - Mike: add MCQ_CLAUDE_KEY as a GitHub repository secret, run the Cost test, and add a real module (e.g. Holderness) to cost-test/modules.
 - Claude: build the blind review sheet from the results; Mike rates it; then choose the model and set prices.
