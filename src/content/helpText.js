@@ -251,9 +251,13 @@ const HELP = {
   redeem: {
     title: 'Codes and licence keys',
     body: [
-      'Bought a question pack? Paste the licence key from your Payhip receipt email. The pack\'s questions are added straight away and never expire.',
-      `Invite codes from the beta look like QTC-ABCD-2345 and add ${hosted.betaCodeQuestions} questions.`,
-      'Each code or key works once.',
+      {
+        list: [
+          'Licence key (from buying a pack): four groups of five letters and numbers, like ABCDE-12345-FGHIJ-67890. It\'s in your Payhip receipt email.',
+          'Invite code (from us): starts with QTC, like QTC-ABCD-2345.',
+        ],
+      },
+      'Paste it in and click Redeem. The questions are added straight away and never expire. Each key or code works once.',
     ],
   },
 }
