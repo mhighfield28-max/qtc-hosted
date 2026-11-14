@@ -7,5 +7,9 @@
   "_callsPerQuestion": "Claude calls allowed per question in a set, counting first writes and regenerations: 1.5 means 30 calls for a 20-question set.",
   "betaCodeQuestions": 200,
   "maxWordsPerSet": 25000,
-  "_maxWordsPerSet": "The most teaching text one set can be written from. Checked in the browser and on the server."
+  "_maxWordsPerSet": "The most teaching text one set can be written from. Checked in the browser and on the server.",
+  "emailFrom": "no-reply@mikehighfield.ai",
+  "emailFromName": "Questions That Count",
+  "emailReplyTo": "admin@mikehighfield.ai",
+  "_emailFrom": "Sign-up and password-reset codes are sent from emailFrom through Amazon SES. Its domain must be verified in SES in the same AWS region as the app, with production access granted. Leave emailFrom empty to use Cognito's built-in sender instead (about 50 emails a day and unreliable with Gmail)."
 }

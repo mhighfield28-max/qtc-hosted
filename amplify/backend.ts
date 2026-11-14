@@ -4,9 +4,23 @@ import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb'
 import { FunctionUrlAuthType, HttpMethod } from 'aws-cdk-lib/aws-lambda'
 import { auth } from './auth/resource'
 import { generate } from './functions/generate/resource'
+import hosted from '../config/hosted.json'
 
 const backend = defineBackend({ auth, generate })
 const lambda = backend.generate.resources.lambda
+
+// ---------- Sign-up emails through SES ----------
+// Amplify points Cognito at an SES identity for the exact address (no-reply@…). We verify the
+// whole domain in SES instead, so point Cognito at the domain identity. See auth/resource.ts.
+if (hosted.emailFrom) {
+  const { cfnUserPool } = backend.auth.resources.cfnResources
+  const poolStack = Stack.of(cfnUserPool)
+  const domain = hosted.emailFrom.split('@')[1]
+  cfnUserPool.addPropertyOverride(
+    'EmailConfiguration.SourceArn',
+    `arn:${poolStack.partition}:ses:${poolStack.region}:${poolStack.account}:identity/${domain}`,
+  )
+}
 
 // ---------- Tables for accounts, credits and usage ----------
 // Made in the function's own stack so the Lambda can be given access without a circular link.
