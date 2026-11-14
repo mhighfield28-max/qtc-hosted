@@ -186,7 +186,10 @@ To check after deploy:
 
 ## Next
 
-- **Before inviting testers:** send sign-up codes from our own domain (no-reply@mikehighfield.ai) through Amazon SES. AWS's built-in sender limits sign-ups to 50 a day and its emails don't reliably reach Gmail: Mike's own Gmail address never got its code. This needs DNS records in Cloudflare, SES production access and a small change in amplify/auth/resource.ts.
+- **Before inviting testers: sign-up emails through SES** (started 14 Nov).
+  - Done: SES set up in London on the Essentials plan (no monthly fee, about $0.16 per 1,000 emails; engagement tracking and auto validation off). The mikehighfield.ai domain identity is created with Easy DKIM and MAIL FROM mail.mikehighfield.ai. The 6 DNS records are in Cloudflare (3 DKIM CNAMEs, MX and SPF TXT for mail., DMARC p=none). altcampusonline@gmail.com is verified for sandbox testing.
+  - Waiting for: SES to show the domain as Verified, then a request for production access (out of the sandbox).
+  - Code ready in PR #7: codes come from "Questions That Count <no-reply@mikehighfield.ai>", reply-to admin@mikehighfield.ai, with a plainer code email. Set in config/hosted.json. Merge only after the domain is verified **and** production access is granted.
 - Then test the waiting list with a brand-new account.
 - Mike: delete the phase-1-signin-metering branch on GitHub (Delete branch button on PR #1); Claude can't delete branches from here.
 - Mike: add MCQ_CLAUDE_KEY as a GitHub repository secret, run the Cost test, and add a real module (e.g. Holderness) to cost-test/modules.
