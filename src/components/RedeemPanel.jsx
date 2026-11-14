@@ -41,7 +41,7 @@ export default function RedeemPanel({ onRedeemed, autoFocus = false, id = 'redee
           id={id}
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          placeholder="QTC-XXXX-XXXX or your Payhip licence key"
+          placeholder="Licence key or invite code"
           autoComplete="off"
           spellCheck={false}
           autoFocus={autoFocus}
