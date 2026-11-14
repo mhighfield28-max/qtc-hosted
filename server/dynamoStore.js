@@ -201,6 +201,41 @@ export function dynamoStore({ accountsTable, setsTable, codesTable, client } = {
       }
     },
 
+    // A Payhip purchase: records the key (hashed) as used and adds its questions, both or neither.
+    // Returns 'redeemed', or 'used' if that key was already claimed.
+    async claimPurchase(item, userId) {
+      const now = new Date().toISOString()
+      try {
+        await db.send(
+          new TransactWriteCommand({
+            TransactItems: [
+              {
+                Put: {
+                  TableName: codesTable,
+                  Item: { ...item, redeemedBy: userId, redeemedAt: now },
+                  ConditionExpression: 'attribute_not_exists(code)',
+                },
+              },
+              {
+                Update: {
+                  TableName: accountsTable,
+                  Key: { userId },
+                  UpdateExpression: 'ADD questions :q SET #access = :true',
+                  ExpressionAttributeNames: { '#access': 'access' },
+                  ExpressionAttributeValues: { ':q': item.questions, ':true': true },
+                },
+              },
+            ],
+          }),
+        )
+        return 'redeemed'
+      } catch (e) {
+        const reasons = cancelled(e)
+        if (reasons?.[0] === 'ConditionalCheckFailed') return 'used'
+        throw e
+      }
+    },
+
     scanAccounts: () => scanAll(accountsTable),
     scanSets: () => scanAll(setsTable),
   }

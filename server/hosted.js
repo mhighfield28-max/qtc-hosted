@@ -3,8 +3,10 @@
 //
 // Routes (all need a signed-in user):
 //   GET  /account       -> { email, questions, access, waitlisted, isAdmin, mode }
-//   POST /redeem        { code } -> the account, with the code's questions added
+//   POST /redeem        { code } -> the account, with the code's questions added. The code is a
+//                       QTC code from the admin page or a Payhip licence key from a pack purchase.
 //   POST /waitlist      -> the account, marked as waiting
+//   POST /profile       { papersPerYear, country, subject } or { skip: true } -> the account
 //   POST /              one question, as in the course build, plus { questions } left
 //   GET  /admin/usage   (admins only) -> totals, each user's usage and the waiting list
 //   GET  /admin/codes   (admins only) -> every code and whether it's been used
@@ -26,6 +28,7 @@ import {
   ensureAccount,
   joinWaitlist,
   redeemCode,
+  saveProfile,
 } from './metering.js'
 import { formatWords, totalWords } from '../src/lib/words.js'
 
@@ -33,7 +36,14 @@ const SET_ID = /^[A-Za-z0-9-]{8,64}$/
 
 export async function handleHostedRequest(
   { method, path, headers = {}, rawBody },
-  { apiKey, store, verifyToken, client = undefined, adminEmails = /** @type {string[]} */ ([]) },
+  {
+    apiKey,
+    store,
+    verifyToken,
+    client = undefined,
+    adminEmails = /** @type {string[]} */ ([]),
+    payhip = /** @type {{ products: any[], fetchImpl?: typeof fetch } | undefined} */ (undefined),
+  },
 ) {
   try {
     const user = await signedInUser(headers, verifyToken)
@@ -43,8 +53,10 @@ export async function handleHostedRequest(
     if (route === 'GET /account') return ok(accountView(await ensureAccount(store, user), { isAdmin }))
     if (route === 'POST /redeem') {
       const { code } = parseBody(rawBody)
-      return ok(accountView(await redeemCode(store, { ...user, code }), { isAdmin }))
+      const account = await redeemCode(store, { ...user, code }, { payhip })
+      return ok({ ...accountView(account, { isAdmin }), added: account.added })
     }
+    if (route === 'POST /profile') return ok(accountView(await saveProfile(store, user, parseBody(rawBody)), { isAdmin }))
     if (route === 'POST /waitlist') return ok(accountView(await joinWaitlist(store, user), { isAdmin }))
 
     if (path.startsWith('/admin')) {
@@ -53,7 +65,16 @@ export async function handleHostedRequest(
       if (route === 'GET /admin/codes') {
         const codes = await store.listCodes()
         codes.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
-        return ok({ codes: codes.map(({ display, code, questions, createdAt, redeemedAt }) => ({ code: display ?? code, questions, createdAt, used: Boolean(redeemedAt), redeemedAt: redeemedAt ?? null })) })
+        return ok({
+          codes: codes.map(({ display, code, kind, questions, createdAt, redeemedAt }) => ({
+            code: display ?? code,
+            kind: kind ?? 'beta',
+            questions,
+            createdAt,
+            used: Boolean(redeemedAt),
+            redeemedAt: redeemedAt ?? null,
+          })),
+        })
       }
       if (route === 'POST /admin/codes') {
         const { count } = parseBody(rawBody)

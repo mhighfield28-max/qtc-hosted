@@ -249,10 +249,11 @@ const HELP = {
   // ---------- Account ----------
 
   redeem: {
-    title: 'Codes',
+    title: 'Codes and licence keys',
     body: [
-      `An invite code adds ${hosted.betaCodeQuestions} questions to your account. Each code works once.`,
-      'Codes look like QTC-ABCD-2345. Capital letters and dashes are optional.',
+      'Bought a question pack? Paste the licence key from your Payhip receipt email. The pack\'s questions are added straight away and never expire.',
+      `Invite codes from the beta look like QTC-ABCD-2345 and add ${hosted.betaCodeQuestions} questions.`,
+      'Each code or key works once.',
     ],
   },
 }

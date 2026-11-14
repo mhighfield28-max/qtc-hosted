@@ -155,8 +155,8 @@ Notes:
 - New DynamoDB table: Codes. Accounts from before (set credits) are converted at 20 questions per set credit.
 
 To check after deploy:
-- [ ] Set ADMIN_EMAILS in Amplify (Hosting, Environment variables) to your email, then redeploy
-- [ ] Open app.mikehighfield.ai/#admin, make one code, sign in with a second email and redeem it: 200 questions
+- [x] Set ADMIN_EMAILS in Amplify (Hosting, Environment variables) to your email, then redeploy (done 13 Nov: three addresses; Mike signs in with the altcampusonline one)
+- [x] Open app.mikehighfield.ai/#admin, make one code and redeem it: 200 questions (done 13 Nov on Mike's own account: 60 → 260. Old set credits converted at 20 questions each, as planned)
 - [ ] Generate a set: the counter falls by one per question written; regenerating doesn't change it
 - [ ] A new account with no code sees the waiting list screen, and appears on the admin page after joining
 
@@ -184,11 +184,49 @@ To check after deploy:
 To check after deploy:
 - [ ] Ask one Canvas tester and one Brightspace tester to import a small set and send a screenshot of the result
 
+## Launch prep 4: Payhip packs and sign-up questions (built 14 Nov 2026)
+
+Decisions (14 Nov):
+- Four packs, pay as you go and never expiring ("not another subscription"), priced in US dollars on Payhip, with VAT added on top by Payhip:
+  - One paper: 40 questions, $9.99
+  - Starter: 100 questions, $19.99
+  - Standard: 300 questions, $49
+  - Premium: 800 questions, $99
+- At about 4 cents of AI per question and about 9% plus 30 cents in fees, typical margins are 72%, 69%, 66% and 58%.
+- The products are unlisted until open launch.
+- Refunds within 14 days if no questions from the pack have been written.
+- Pack sizes and prices are provisional. They will be reviewed after the beta, using the sign-up answers and real usage.
+
+Built:
+- A Payhip licence key goes in the same Redeem box as a QTC invite code.
+  - The server checks the key against each pack's Payhip product, using that product's secret key, and adds the pack's questions.
+  - It records the key as used: the database stores only a hash, and Payhip's own use count is updated too.
+  - Refunded keys, unknown keys and keys already used are refused. If Payhip is down, the message says so.
+  - The pack list is in config/packs.json.
+  - config/hosted.json has payments: "payhip" or "off". Use "off" for an institution's own deployment.
+- Optional sign-up questions, asked once: papers or quizzes written a year, country and subject. They appear on the access screen and, for users who already have access, at the top of Set up. The answers show on the admin page, for testers and for the waiting list.
+- The admin code list also shows pack purchases, with the pack name and the last four characters of the key.
+- A one-page buyer's guide (PDF) is uploaded to each Payhip product.
+
+Before merging: the four Amplify secrets PAYHIP_ONE_PAPER, PAYHIP_STARTER, PAYHIP_STANDARD and PAYHIP_PREMIUM must exist, or the deploy stops.
+
+To check after deploy:
+- [ ] Buy the One paper pack from its unlisted link (use a 100% Payhip coupon, or buy and refund), redeem the key in the app: +40 questions
+- [ ] Redeem the same key again: refused
+- [ ] Refund the purchase in Payhip, try a fresh key from that refunded order: refused
+- [ ] The sign-up questions appear once, and the answers show on the admin page
+
+Still to do: cover images for the four products (Claude), an admin tool to take questions back after a refund (later).
+
 ## Next
 
+- **Before inviting testers: sign-up emails through SES** (started 14 Nov).
+  - Done: SES set up in London on the Essentials plan (no monthly fee, about $0.16 per 1,000 emails; engagement tracking and auto validation off). The mikehighfield.ai domain identity is created with Easy DKIM and MAIL FROM mail.mikehighfield.ai. The 6 DNS records are in Cloudflare (3 DKIM CNAMEs, MX and SPF TXT for mail., DMARC p=none). altcampusonline@gmail.com is verified for sandbox testing.
+  - Waiting for: SES to show the domain as Verified, then a request for production access (out of the sandbox).
+  - Code ready in PR #7: codes come from "Questions That Count <no-reply@mikehighfield.ai>", reply-to admin@mikehighfield.ai, with a plainer code email. Set in config/hosted.json. Merge only after the domain is verified **and** production access is granted.
+- Then test the waiting list with a brand-new account.
 - Mike: delete the phase-1-signin-metering branch on GitHub (Delete branch button on PR #1); Claude can't delete branches from here.
 - Mike: add MCQ_CLAUDE_KEY as a GitHub repository secret, run the Cost test, and add a real module (e.g. Holderness) to cost-test/modules.
 - Claude: build the blind review sheet from the results; Mike rates it; then choose the model and set prices.
-- Claude: PR D, Payhip licence keys in the Redeem box (packs of 100, 300 and 800 questions).
 - Claude: draft the privacy notice and terms of use for a lawyer to check.
 - Then Phase 2 (account page and saved work) when Mike says go.

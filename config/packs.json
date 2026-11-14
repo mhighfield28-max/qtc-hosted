@@ -1,0 +1,9 @@
+{
+  "_note": "The question packs sold on Payhip. Each Payhip product has licence keys switched on; its product secret key is stored as an Amplify secret with the name in 'secret'. Changing a price here doesn't change Payhip: set prices in Payhip. 'questions' is what a key adds to the buyer's account.",
+  "packs": [
+    { "id": "one-paper", "name": "One paper", "questions": 40, "price": 9.99, "secret": "PAYHIP_ONE_PAPER" },
+    { "id": "starter", "name": "Starter", "questions": 100, "price": 19.99, "secret": "PAYHIP_STARTER" },
+    { "id": "standard", "name": "Standard", "questions": 300, "price": 49, "secret": "PAYHIP_STANDARD" },
+    { "id": "premium", "name": "Premium", "questions": 800, "price": 99, "secret": "PAYHIP_PREMIUM" }
+  ]
+}

@@ -7,5 +7,7 @@
   "_callsPerQuestion": "Claude calls allowed per question in a set, counting first writes and regenerations: 1.5 means 30 calls for a 20-question set.",
   "betaCodeQuestions": 200,
   "maxWordsPerSet": 25000,
-  "_maxWordsPerSet": "The most teaching text one set can be written from. Checked in the browser and on the server."
+  "_maxWordsPerSet": "The most teaching text one set can be written from. Checked in the browser and on the server.",
+  "payments": "payhip",
+  "_payments": "payhip: packs are bought on Payhip and their licence keys redeemed in the app (see packs.json; each pack's product secret key must be set as an Amplify secret). off: no purchases, for an institution's own deployment; its users get questions from admin codes."
 }
