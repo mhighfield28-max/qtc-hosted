@@ -16,6 +16,7 @@ import { randomInt } from 'node:crypto'
 import hosted from '../config/hosted.json' with { type: 'json' }
 import prices from '../config/prices.json' with { type: 'json' }
 import { RequestError } from './generate.js'
+import { markPayhipKeyUsed, purchaseId, verifyPayhipKey } from './payhip.js'
 
 export const callCap = (total) => Math.ceil(Math.max(1, total) * hosted.callsPerQuestion)
 
@@ -51,6 +52,7 @@ export function accountView(account, { isAdmin = false } = {}) {
     questions: account.questions ?? 0,
     access: Boolean(account.access) || isAdmin,
     waitlisted: Boolean(account.waitlisted),
+    profileDone: Boolean(account.profile),
     isAdmin,
     mode: hosted.mode,
   }
@@ -101,13 +103,69 @@ export async function createCodes(store, { count, questions = hosted.betaCodeQue
   return codes
 }
 
-export async function redeemCode(store, { userId, email, code }) {
-  await ensureAccount(store, { userId, email })
+// A QTC code (made on the admin page) looks like QTC-ABCD-2345.
+const isQtcCode = (normalised) => /^QTC[A-Z0-9]{8}$/.test(normalised)
+
+// Redeems either kind of code: a QTC code from the admin page, or a Payhip licence key from a
+// pack purchase (when payhip is passed in). Returns the account plus { added: { questions, pack } }.
+export async function redeemCode(store, { userId, email, code }, { payhip } = {}) {
+  const before = await ensureAccount(store, { userId, email })
   const key = normaliseCode(code)
   if (key.length < 6) throw new RequestError(400, 'Enter the code exactly as you received it.')
-  const result = await store.redeemCode(key, userId)
-  if (result === 'unknown') throw new RequestError(404, "That code wasn't recognised. Check it and try again.")
-  if (result === 'used') throw new RequestError(409, 'That code has already been used.')
+  if (isQtcCode(key) || !payhip) {
+    const result = await store.redeemCode(key, userId)
+    if (result === 'unknown') throw new RequestError(404, "That code wasn't recognised. Check it and try again.")
+    if (result === 'used') throw new RequestError(409, 'That code has already been used.')
+    const account = await store.getAccount(userId)
+    return { ...account, added: { questions: (account.questions ?? 0) - (before.questions ?? 0), pack: null } }
+  }
+  return redeemPurchase(store, { userId, licence: String(code).trim() }, payhip)
+}
+
+async function redeemPurchase(store, { userId, licence }, { products, fetchImpl }) {
+  const found = await verifyPayhipKey(licence, { products, fetchImpl })
+  if (!found) {
+    throw new RequestError(404, "That code wasn't recognised. Check it against your Payhip receipt and try again.")
+  }
+  if (!found.enabled) {
+    throw new RequestError(409, 'That key has been switched off, usually because the purchase was refunded.')
+  }
+  const { product } = found
+  const now = new Date().toISOString()
+  const result = await store.claimPurchase(
+    {
+      code: purchaseId(licence),
+      display: `Payhip ${product.name} ····${licence.slice(-4).toUpperCase()}`,
+      kind: 'payhip',
+      pack: product.id,
+      questions: product.questions,
+      createdAt: now,
+    },
+    userId,
+  )
+  if (result === 'used') throw new RequestError(409, 'That key has already been used.')
+  await markPayhipKeyUsed(licence, product, { fetchImpl })
+  const account = await store.getAccount(userId)
+  return { ...account, added: { questions: product.questions, pack: product.name } }
+}
+
+// ---------- About the user (optional sign-up questions) ----------
+
+export const PAPERS_PER_YEAR = ['1-2', '3-5', '6-10', '10+']
+const cleanText = (v, max) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max)
+
+// Saves the answers to "How many papers do you write a year?", country and subject.
+// skip: true records that they chose not to answer, so they aren't asked again.
+export async function saveProfile(store, { userId, email }, answers = {}) {
+  await ensureAccount(store, { userId, email })
+  const profile = answers.skip
+    ? { skipped: true }
+    : {
+        papersPerYear: PAPERS_PER_YEAR.includes(answers.papersPerYear) ? answers.papersPerYear : '',
+        country: cleanText(answers.country, 60),
+        subject: cleanText(answers.subject, 80),
+      }
+  await store.updateAccount(userId, { profile: { ...profile, answeredAt: new Date().toISOString() } })
   return store.getAccount(userId)
 }
 
@@ -159,6 +217,9 @@ export async function adminUsage(store) {
       costPerQuestion: charged ? cost / charged : null,
       createdAt: a.createdAt ?? null,
       lastActive,
+      papersPerYear: a.profile?.papersPerYear ?? '',
+      country: a.profile?.country ?? '',
+      subject: a.profile?.subject ?? '',
     }
   })
   users.sort((x, y) => String(y.lastActive).localeCompare(String(x.lastActive)))
@@ -172,7 +233,7 @@ export async function adminUsage(store) {
   totals.costPerQuestion = totals.questionsCharged ? totals.cost / totals.questionsCharged : null
   const waitlist = users
     .filter((u) => u.waitlisted && !u.access)
-    .map((u) => ({ email: u.email, since: u.createdAt }))
+    .map((u) => ({ email: u.email, since: u.createdAt, papersPerYear: u.papersPerYear, country: u.country, subject: u.subject }))
   return { totals, users, waitlist }
 }
 
@@ -246,6 +307,14 @@ export function memoryStore() {
       c.redeemedAt = new Date().toISOString()
       const a = accounts.get(userId)
       a.questions = (a.questions ?? 0) + c.questions
+      a.access = true
+      return 'redeemed'
+    },
+    async claimPurchase(item, userId) {
+      if (codes.has(item.code)) return 'used'
+      codes.set(item.code, { ...item, redeemedBy: userId, redeemedAt: new Date().toISOString() })
+      const a = accounts.get(userId)
+      a.questions = (a.questions ?? 0) + item.questions
       a.access = true
       return 'redeemed'
     },

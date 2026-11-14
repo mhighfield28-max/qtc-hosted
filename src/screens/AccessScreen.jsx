@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { joinWaitlist } from '../lib/hosted.js'
 import { Card, Notice, SecondaryButton } from '../components/ui.jsx'
 import RedeemPanel from '../components/RedeemPanel.jsx'
+import ProfileQuestions from '../components/ProfileQuestions.jsx'
 
 // Shown to a signed-in user who doesn't have access yet (the private beta).
 export default function AccessScreen({ account, onAccount }) {
@@ -28,7 +29,7 @@ export default function AccessScreen({ account, onAccount }) {
       </div>
 
       <Card>
-        <h2 className="mb-2 text-xl">Have an invite code?</h2>
+        <h2 className="mb-2 text-xl">Have an invite code or a licence key?</h2>
         <p className="mb-4 text-muted">Enter it here to unlock your questions.</p>
         <RedeemPanel id="accessCode" autoFocus onRedeemed={onAccount} />
       </Card>
@@ -55,6 +56,14 @@ export default function AccessScreen({ account, onAccount }) {
           </Notice>
         )}
       </Card>
+
+      {!account.profileDone && (
+        <Card>
+          <h2 className="mb-1 text-xl">Help us size the question packs</h2>
+          <p className="mb-4 text-muted">Three optional questions. Your answers help us set fair pack sizes and prices.</p>
+          <ProfileQuestions idPrefix="access-profile" onSaved={onAccount} />
+        </Card>
+      )}
     </div>
   )
 }

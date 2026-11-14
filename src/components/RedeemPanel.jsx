@@ -3,7 +3,8 @@ import { redeemCode } from '../lib/hosted.js'
 import { Notice, PrimaryButton } from './ui.jsx'
 import { Help } from './Help.jsx'
 
-// Enter a code (a beta code now; a Payhip purchase key later) to add questions to the account.
+// Enter a code to add questions to the account: a QTC code from the admin page, or the licence
+// key from a Payhip pack purchase. The server works out which it is.
 export default function RedeemPanel({ onRedeemed, autoFocus = false, id = 'redeemCode' }) {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
@@ -17,7 +18,9 @@ export default function RedeemPanel({ onRedeemed, autoFocus = false, id = 'redee
     try {
       const account = await redeemCode(code)
       setCode('')
-      setMessage({ tone: 'pass', text: `Code accepted. You now have ${account.questions} questions.` })
+      const { added } = account
+      const what = added?.pack ? `${added.pack} pack added: ${added.questions} questions.` : 'Code accepted.'
+      setMessage({ tone: 'pass', text: `${what} You now have ${account.questions} questions.` })
       onRedeemed?.(account)
     } catch (error) {
       setMessage({ tone: 'fail', text: error.message })
@@ -38,10 +41,11 @@ export default function RedeemPanel({ onRedeemed, autoFocus = false, id = 'redee
           id={id}
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          placeholder="QTC-XXXX-XXXX"
+          placeholder="QTC-XXXX-XXXX or your Payhip licence key"
           autoComplete="off"
+          spellCheck={false}
           autoFocus={autoFocus}
-          className="min-w-0 flex-1 rounded-md border border-muted bg-card px-3 py-2 font-mono uppercase tracking-wide"
+          className="min-w-0 flex-1 rounded-md border border-muted bg-card px-3 py-2 font-mono tracking-wide"
         />
         <PrimaryButton type="submit" disabled={busy || !code.trim()}>
           {busy ? 'Checking…' : 'Redeem'}

@@ -15,6 +15,7 @@ import { HOSTED, fetchAccount, newSetId } from './lib/hosted.js'
 import AccessScreen from './screens/AccessScreen.jsx'
 import AdminScreen from './screens/AdminScreen.jsx'
 import RedeemPanel from './components/RedeemPanel.jsx'
+import ProfileQuestions from './components/ProfileQuestions.jsx'
 import { Card } from './components/ui.jsx'
 
 // "Physical Science Foundations (PHY101)" -> "PHY101"
@@ -207,6 +208,13 @@ export default function App({ user, signOut }) {
                 setAccount(a)
               }}
             />
+          </Card>
+        )}
+        {HOSTED && account?.access && !account.profileDone && view === 'app' && step === 0 && (
+          <Card className="mb-6">
+            <h2 className="mb-1 text-xl">Before you start: three quick questions</h2>
+            <p className="mb-4 text-muted">Optional, and asked only once. Your answers help us set fair pack sizes and prices.</p>
+            <ProfileQuestions onSaved={setAccount} />
           </Card>
         )}
         {HOSTED && view === 'admin' && account?.isAdmin && <AdminScreen onClose={closeAdmin} />}

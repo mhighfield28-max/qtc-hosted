@@ -3,6 +3,15 @@
 import { CognitoJwtVerifier } from 'aws-jwt-verify'
 import { handleHostedRequest } from '../../../server/hosted.js'
 import { dynamoStore } from '../../../server/dynamoStore.js'
+import hosted from '../../../config/hosted.json'
+import packs from '../../../config/packs.json'
+
+// Payhip packs, each with its product secret key from the Amplify secret named in packs.json.
+// Off when config/hosted.json says payments: "off" (an institution's own deployment).
+const payhip =
+  hosted.payments === 'payhip'
+    ? { products: packs.packs.map((p) => ({ ...p, secret: process.env[p.secret] })) }
+    : undefined
 
 type FunctionUrlEvent = {
   body?: string
@@ -48,6 +57,7 @@ export const handler = async (event: FunctionUrlEvent) => {
       verifyToken: (token: string) => deps.verifier.verify(token),
       // Verified email addresses that can open the admin page, from the Amplify environment variable.
       adminEmails: (process.env.ADMIN_EMAILS ?? '').split(',').filter(Boolean),
+      payhip,
     },
   )
   return json(status, body)

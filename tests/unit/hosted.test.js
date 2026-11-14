@@ -55,12 +55,12 @@ const payload = (setId, n = 1, total = 20, text = 'water boils at 100 °C at sea
     total,
   })
 
-function setup(claude = fakeClaude(good)) {
+function setup(claude = fakeClaude(good), { payhip } = {}) {
   const store = memoryStore()
   const call = (req, token = 'token-amy') =>
     handleHostedRequest(
       { method: 'POST', path: '/', headers: token ? { authorization: `Bearer ${token}` } : {}, ...req },
-      { apiKey: 'test-key', store, verifyToken, client: claude, adminEmails: ['Owner@example.com'] },
+      { apiKey: 'test-key', store, verifyToken, client: claude, adminEmails: ['Owner@example.com'], payhip },
     )
   const generate = (setId, n, token, total, text) => call({ rawBody: payload(setId, n, total, text) }, token)
   const account = (token = 'token-amy') => call({ method: 'GET', path: '/account' }, token)
@@ -145,6 +145,119 @@ describe('Codes', () => {
     const list = (await call({ method: 'GET', path: '/admin/codes' }, 'token-owner')).body.codes
     expect(list.filter((c) => c.used).map((c) => c.code)).toEqual([codes[1].code])
     expect(normaliseCode(codes[1].code)).toBe(codes[1].code.replace(/-/g, ''))
+  })
+})
+
+// A fake Payhip: keys belong to products by their product secret key; disabled keys were refunded.
+function fakePayhip({ keys = {}, down = false } = {}) {
+  const products = [
+    { id: 'one-paper', name: 'One paper', questions: 40, secret: 'secret-one' },
+    { id: 'starter', name: 'Starter', questions: 100, secret: 'secret-starter' },
+    { id: 'standard', name: 'Standard', questions: 300, secret: 'secret-standard' },
+    { id: 'premium', name: 'Premium', questions: 800, secret: 'secret-premium' },
+  ]
+  const usageCalls = []
+  const fetchImpl = vi.fn(async (url, init = {}) => {
+    if (down) throw new Error('network down')
+    const secret = init.headers['product-secret-key']
+    if (init.method === 'PUT') {
+      usageCalls.push({ url, secret, body: init.body })
+      return new Response('{"data":{"uses":1}}', { status: 200 })
+    }
+    const key = new URL(url).searchParams.get('license_key')
+    const k = keys[key]
+    if (!k || k.secret !== secret) return new Response('', { status: 200 })
+    return new Response(JSON.stringify({ data: { enabled: k.enabled ?? true, uses: 0, buyer_email: 'buyer@example.com' } }), { status: 200 })
+  })
+  return { products, fetchImpl, usageCalls }
+}
+
+describe('Payhip packs', () => {
+  const keys = {
+    'ABCDE-FGHIJ-KLMNO-PQRST': { secret: 'secret-standard' },
+    'ZYXWV-UTSRQ-PONML-KJIHG': { secret: 'secret-one' },
+    'REFUN-DEDKE-Y0000-00000': { secret: 'secret-starter', enabled: false },
+  }
+
+  it('a licence key adds its pack\'s questions and access, once, and tells Payhip it was used', async () => {
+    const payhip = fakePayhip({ keys })
+    const { redeem, account } = setup(undefined, { payhip })
+    const res = await redeem('  ABCDE-FGHIJ-KLMNO-PQRST ')
+    expect(res.status).toBe(200)
+    expect(res.body).toMatchObject({ access: true, questions: 300, added: { questions: 300, pack: 'Standard' } })
+    expect(payhip.usageCalls).toHaveLength(1)
+    expect(payhip.usageCalls[0]).toMatchObject({ secret: 'secret-standard', body: 'license_key=ABCDE-FGHIJ-KLMNO-PQRST' })
+    expect((await redeem('ABCDE-FGHIJ-KLMNO-PQRST', 'token-bob')).status).toBe(409)
+    expect((await account()).body.questions).toBe(300)
+    // A second pack adds to what's there
+    expect((await redeem('ZYXWV-UTSRQ-PONML-KJIHG')).body).toMatchObject({ questions: 340, added: { pack: 'One paper' } })
+  })
+
+  it('refuses unknown and refunded keys, and says so plainly if Payhip is unreachable', async () => {
+    const { redeem } = setup(undefined, { payhip: fakePayhip({ keys }) })
+    const unknown = await redeem('NOTAR-EALKE-Y0000-00000')
+    expect(unknown.status).toBe(404)
+    expect(unknown.body.error).toContain('Payhip receipt')
+    const refunded = await redeem('REFUN-DEDKE-Y0000-00000')
+    expect(refunded.status).toBe(409)
+    expect(refunded.body.error).toContain('refunded')
+    const down = setup(undefined, { payhip: fakePayhip({ keys, down: true }) })
+    const res = await down.redeem('ABCDE-FGHIJ-KLMNO-PQRST')
+    expect(res.status).toBe(503)
+    expect((await down.account()).body.questions).toBe(0)
+  })
+
+  it('QTC invite codes still work alongside Payhip keys, without asking Payhip', async () => {
+    const payhip = fakePayhip({ keys })
+    const { makeCodes, redeem } = setup(undefined, { payhip })
+    const [{ code }] = await makeCodes(1)
+    expect((await redeem(code)).body).toMatchObject({ questions: hosted.betaCodeQuestions, added: { questions: hosted.betaCodeQuestions, pack: null } })
+    expect(payhip.fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('the database stores only a hash of the key; the admin list shows the pack and the last four characters', async () => {
+    const { redeem, store, call } = setup(undefined, { payhip: fakePayhip({ keys }) })
+    await redeem('ABCDE-FGHIJ-KLMNO-PQRST')
+    const stored = [...store.codes.values()]
+    expect(JSON.stringify(stored)).not.toContain('ABCDE-FGHIJ')
+    expect(stored[0].code).toMatch(/^PAYHIP#[0-9a-f]{64}$/)
+    const list = (await call({ method: 'GET', path: '/admin/codes' }, 'token-owner')).body.codes
+    expect(list[0]).toMatchObject({ code: 'Payhip Standard ····QRST', kind: 'payhip', questions: 300, used: true })
+  })
+
+  it('with payments off, a key that isn\'t a QTC code is simply not recognised', async () => {
+    const { redeem } = setup()
+    expect((await redeem('ABCDE-FGHIJ-KLMNO-PQRST')).status).toBe(404)
+  })
+})
+
+describe('Sign-up questions', () => {
+  it('saves the answers once, cleaned, and shows them on the admin page', async () => {
+    const { call, account, letIn } = setup()
+    expect((await account()).body.profileDone).toBe(false)
+    const res = await call({ path: '/profile', rawBody: JSON.stringify({ papersPerYear: '3-5', country: ' UK\u0007 ', subject: 'Geography', extra: 'ignored' }) })
+    expect(res.status).toBe(200)
+    expect(res.body.profileDone).toBe(true)
+    await letIn()
+    const users = (await call({ method: 'GET', path: '/admin/usage' }, 'token-owner')).body.users
+    expect(users.find((u) => u.email === 'amy@uni.ac.uk')).toMatchObject({ papersPerYear: '3-5', country: 'UK', subject: 'Geography' })
+  })
+
+  it('skipping counts as answered; an unknown option is dropped; long text is cut short', async () => {
+    const { call, store } = setup()
+    expect((await call({ path: '/profile', rawBody: '{"skip":true}' }, 'token-bob')).body.profileDone).toBe(true)
+    await call({ path: '/profile', rawBody: JSON.stringify({ papersPerYear: 'lots', subject: 'x'.repeat(500) }) })
+    const profile = store.accounts.get('user-amy').profile
+    expect(profile.papersPerYear).toBe('')
+    expect(profile.subject).toHaveLength(80)
+  })
+
+  it('waiting-list entries carry the answers', async () => {
+    const { call } = setup()
+    await call({ path: '/waitlist', rawBody: '{}' })
+    await call({ path: '/profile', rawBody: JSON.stringify({ papersPerYear: '10+', country: 'UAE' }) })
+    const { waitlist } = (await call({ method: 'GET', path: '/admin/usage' }, 'token-owner')).body
+    expect(waitlist[0]).toMatchObject({ email: 'amy@uni.ac.uk', papersPerYear: '10+', country: 'UAE' })
   })
 })
 
@@ -314,5 +427,16 @@ describe('DynamoDB store', () => {
     const ok = fakeDb(null, { code: 'QTCX', questions: 200 })
     expect(await dynamoStore({ ...tables, client: ok.client }).redeemCode('QTCX', 'u')).toBe('redeemed')
     expect(ok.sent[1].input.TransactItems[1].Update.ExpressionAttributeValues[':q']).toBe(200)
+  })
+
+  it('claims a Payhip purchase once: the key record and the questions are written together', async () => {
+    const item = { code: 'PAYHIP#abc', kind: 'payhip', questions: 300 }
+    const ok = fakeDb()
+    expect(await dynamoStore({ ...tables, client: ok.client }).claimPurchase(item, 'u')).toBe('redeemed')
+    const [put, update] = ok.sent[0].input.TransactItems
+    expect(put.Put).toMatchObject({ TableName: 'Codes', ConditionExpression: 'attribute_not_exists(code)', Item: { code: 'PAYHIP#abc', redeemedBy: 'u' } })
+    expect(update.Update.ExpressionAttributeValues[':q']).toBe(300)
+    const race = fakeDb(cancelledWith(['ConditionalCheckFailed', 'None']))
+    expect(await dynamoStore({ ...tables, client: race.client }).claimPurchase(item, 'u')).toBe('used')
   })
 })

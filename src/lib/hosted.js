@@ -38,6 +38,8 @@ async function api(method, path, body) {
 export const fetchAccount = () => api('GET', '/account')
 export const redeemCode = (code) => api('POST', '/redeem', { code })
 export const joinWaitlist = () => api('POST', '/waitlist', {})
+// Optional sign-up questions: papers a year, country and subject. { skip: true } to decline.
+export const saveProfile = (answers) => api('POST', '/profile', answers)
 
 // The owner's admin page.
 export const fetchUsage = () => api('GET', '/admin/usage')

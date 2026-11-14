@@ -98,7 +98,7 @@ export default function AdminScreen({ onClose }) {
           <table className="w-full border-collapse text-left text-sm tabular-nums">
             <thead>
               <tr className="border-b border-line">
-                {['Email', 'Access', 'Questions left', 'Sets', 'Questions written', 'Regenerations', 'Cost', 'Per question', 'Last active'].map((h) => (
+                {['Email', 'Access', 'Questions left', 'Sets', 'Questions written', 'Regenerations', 'Cost', 'Per question', 'Last active', 'Papers a year', 'Country', 'Subject'].map((h) => (
                   <th key={h} scope="col" className="whitespace-nowrap py-2 pr-4 font-medium">{h}</th>
                 ))}
               </tr>
@@ -115,11 +115,14 @@ export default function AdminScreen({ onClose }) {
                   <td className="py-2 pr-4">{money(u.cost)}</td>
                   <td className="py-2 pr-4">{money(u.costPerQuestion)}</td>
                   <td className="py-2 pr-4">{date(u.lastActive)}</td>
+                  <td className="py-2 pr-4">{u.papersPerYear || '–'}</td>
+                  <td className="py-2 pr-4">{u.country || '–'}</td>
+                  <td className="py-2 pr-4">{u.subject || '–'}</td>
                 </tr>
               ))}
               {usage && !usage.users.length && (
                 <tr>
-                  <td colSpan={9} className="py-3 text-muted">No one has signed in yet.</td>
+                  <td colSpan={12} className="py-3 text-muted">No one has signed in yet.</td>
                 </tr>
               )}
             </tbody>
@@ -135,6 +138,12 @@ export default function AdminScreen({ onClose }) {
               {usage.waitlist.map((w) => (
                 <li key={w.email}>
                   {w.email} <span className="text-sm text-muted">since {date(w.since)}</span>
+                  {(w.papersPerYear || w.country || w.subject) && (
+                    <span className="text-sm text-muted">
+                      {' · '}
+                      {[w.papersPerYear && `${w.papersPerYear} papers a year`, w.country, w.subject].filter(Boolean).join(' · ')}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -148,9 +157,10 @@ export default function AdminScreen({ onClose }) {
       </Card>
 
       <Card>
-        <h2 className="mb-1 text-xl">Invite codes</h2>
+        <h2 className="mb-1 text-xl">Invite codes and pack purchases</h2>
         <p className="mb-4 text-sm text-muted">
-          Each code works once and adds {codes[0]?.questions ?? 200} questions. Send one to each tester.
+          Each invite code works once and adds {codes.find((c) => c.kind === 'beta')?.questions ?? 200} questions. Send one to
+          each tester. Payhip pack keys appear here once they've been redeemed, with the last four characters of the key.
         </p>
         <div className="mb-4 flex flex-wrap items-end gap-3">
           <div>
@@ -178,7 +188,7 @@ export default function AdminScreen({ onClose }) {
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-line">
-                {['Code', 'Questions', 'Made', 'Used'].map((h) => (
+                {['Code', 'Type', 'Questions', 'Made', 'Used'].map((h) => (
                   <th key={h} scope="col" className="py-2 pr-4 font-medium">{h}</th>
                 ))}
               </tr>
@@ -187,6 +197,7 @@ export default function AdminScreen({ onClose }) {
               {codes.map((c) => (
                 <tr key={c.code} className="border-b border-line">
                   <td className="py-2 pr-4 font-mono">{c.code}</td>
+                  <td className="py-2 pr-4">{c.kind === 'payhip' ? 'Pack purchase' : 'Invite'}</td>
                   <td className="py-2 pr-4">{c.questions}</td>
                   <td className="py-2 pr-4">{date(c.createdAt)}</td>
                   <td className="py-2 pr-4">{c.used ? `Yes, ${date(c.redeemedAt)}` : 'Not yet'}</td>
